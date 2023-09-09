@@ -1,8 +1,8 @@
-import { For, Show, createEffect, createSignal, onCleanup } from 'solid-js';
+import { For, Show, createSignal } from 'solid-js';
 import './App.css';
-import { shamir3pass } from 'shamir3pass';
 import RoomsGun from './repositories/rooms.gun';
 import { createRef } from './utils';
+import { GameState } from './repositories/deck.gun';
 
 function App() {
 	const { activeRoom, join, roomIds } = RoomsGun();
@@ -10,20 +10,9 @@ function App() {
 
 	const [name, setName] = createSignal('');
 
-	createEffect(() => {
-		// const a = gun.get(name()).on((data: any, key: any) => {
-		//     console.log('realtime updates:', data, key);
-		// });
-		// const intervalID = setInterval(() => gun.get(name()).get('live').put(Math.random()), 1000);
-		// onCleanup(() => {
-		//     clearInterval(intervalID);
-		//     a.off();
-		// });
-	});
-
-	function createRoom() {
+	async function createRoom() {
 		if (name()) {
-			leaveRoom.current = join(name());
+			leaveRoom.current = await join(name());
 		}
 	}
 
@@ -37,22 +26,28 @@ function App() {
 				<br />
 			</Show>
 			<Show when={!activeRoom()}>
-				<For each={roomIds()}>
+				<For each={[...roomIds().values()]}>
 					{roomId => (
 						<div>
 							{roomId}
-							<button onClick={() => name() && (leaveRoom.current = join(name(), roomId))}>Join</button>
+							<button onClick={async () => name() && (leaveRoom.current = await join(name(), roomId))}>Join</button>
 						</div>
 					)}
 				</For>
 				<button onClick={createRoom}>Create Room</button>
 			</Show>
 			<Show when={activeRoom()}>
-				<For each={Object.entries(activeRoom()?.players() ?? {})}>{([player, active]) => active && <div>{player}</div>}</For>
+				<For each={(activeRoom()?.players() ?? '').split(',')}>{player => <div>{player}</div>}</For>
 				<button onClick={() => leaveRoom.current?.()}>Leave Room</button>
-				<Show when={!activeRoom()?.players()?.lenght}>
-					<button onClick={() => {}}>Start Game</button>
+				<Show when={(activeRoom()?.players()?.split(',').length ?? 0) > 1 && (activeRoom()?.gameState() ?? 0) < GameState.GAME_STARTED}>
+					<button onClick={() => activeRoom()?.start()}>Start Game</button>
 				</Show>
+				<Show when={(activeRoom()?.gameState() ?? 0) === GameState.GAME_STARTED}>
+					<button onClick={() => activeRoom()?.draw()}>Draw</button>
+				</Show>
+			</Show>
+			<Show when={activeRoom()?.players()?.length}>
+				<For each={activeRoom()?.deck?.() ?? []}>{item => <span>{item.toString()},</span>}</For>
 			</Show>
 		</div>
 	);

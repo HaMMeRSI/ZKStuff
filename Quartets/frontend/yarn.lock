@@ -767,7 +767,7 @@ seroval@^0.5.0:
 
 "shamir3pass@https://github.com/HaMMeRSI/Shamir3Pass":
   version "1.0.0"
-  resolved "https://github.com/HaMMeRSI/Shamir3Pass#04bf08b1d071cf69df32276a600e2ccb8d7af881"
+  resolved "https://github.com/HaMMeRSI/Shamir3Pass#c1e174d0593ab64e088f29a8ebaf4e32b6d1d026"
   dependencies:
     bigint-crypto-utils "^3.3.0"
 

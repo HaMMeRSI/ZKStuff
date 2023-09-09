@@ -5,27 +5,26 @@ import { APP, ROOMS } from './tables.index';
 import { Accessor, createSignal } from 'solid-js';
 
 export interface IRoomsGun {
-	roomIds: Accessor<string[]>;
+	roomIds: Accessor<Set<string>>;
 	activeRoom: Accessor<IRoomGun | undefined>;
-	join(name: string, roomId?: string): VoidFunction;
+	join(name: string, roomId?: string): Promise<VoidFunction>;
 }
 
 function roomsGun(): IRoomsGun {
 	const roomsGun = gun.get(APP).get(ROOMS);
-	const [roomIds, setRoomIds] = createSignal<string[]>([]);
+	const [roomIds, setRoomIds] = createSignal<Set<string>>(new Set());
 	const [activeRoom, setActiveRoom] = createSignal<IRoomGun>();
 
-	roomsGun.on((data: Record<string, boolean>, _key: any) => {
-		const { _, ...rest } = data ?? {};
-		console.log('rooms Listner', rest);
-
-		setRoomIds(Object.keys(rest));
+	roomsGun.map().on((data: Record<string, boolean>, key: any) => {
+		const set = new Set([...roomIds().values()]);
+		data.players ? set.add(key) : set.delete(key);
+		setRoomIds(set);
 	});
 
 	return {
 		roomIds,
 		activeRoom,
-		join(name: string, roomId?: string) {
+		async join(name: string, roomId?: string) {
 			if (activeRoom()) {
 				throw new Error("Can't create room while already in a room");
 			} else if (!roomId) {
@@ -33,12 +32,12 @@ function roomsGun(): IRoomsGun {
 			}
 
 			const room = roomGun(roomId);
-			const leave = room.join(name);
+			const leave = await room.join(name);
 			setActiveRoom(room);
 
 			return () => {
-				setActiveRoom();
 				leave();
+				setActiveRoom();
 			};
 		},
 	};

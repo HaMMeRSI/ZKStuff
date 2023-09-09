@@ -8,7 +8,7 @@
 		"url": "https://github.com/HaMMeRSI/ZKStuff"
 	},
 	"license": "MIT",
-	"description": "Implementation of the Shamir three pass protocol encryption function in TypeScript.",
+	"description": "My trying ZKStuff",
 	"scripts": {
 		"build": "yarn clean && tsc",
 		"clean": "rimraf dist"
@@ -16,9 +16,7 @@
 	"keywords": [
 		"zk"
 	],
-	"dependencies": {
-		"shamir3pass": "https://github.com/HaMMeRSI/Shamir3Pass"
-	},
+	"dependencies": {},
 	"devDependencies": {
 		"@typescript-eslint/eslint-plugin": "^6.6.0",
 		"@typescript-eslint/parser": "^6.6.0",
