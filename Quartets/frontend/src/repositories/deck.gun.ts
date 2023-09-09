@@ -9,7 +9,6 @@ export enum GameState {
 	NOT_ENCRYPTED,
 	ENCRYPTED,
 	EACH_ENCRYPTED,
-	FINAL_ENCRYPTION_ROUND,
 	GAME_STARTED,
 }
 
@@ -31,14 +30,6 @@ export interface IDecksGun {
 	init: () => void;
 	draw: VoidFunction;
 	off: VoidFunction;
-}
-
-interface IShufleTurnPayload {
-	turn: number;
-	deck: string;
-	prime: string;
-	playerOrder: string;
-	gameState: GameState;
 }
 
 interface IRequestPayload {
@@ -75,47 +66,53 @@ function deckGun(roomId: string, players: Accessor<string>, name: Ref<string>): 
 	const requestGun = gun.get(APP).get(ROOMS).get(roomId).get(DECK).get(REQUEST);
 	const keysGun = gun.get(APP).get(ROOMS).get(roomId).get(DECK).get(KEYS);
 
-	deckGun.on((data: IShufleTurnPayload, _key: any) => {
-		const deck = toDeck(data.deck);
-		playerOrder = data.playerOrder.split(',');
-		prime = BigInt(data.prime);
+	deckGun.get('turn').on((data: number) => setTurn(data));
+	deckGun.get('gameState').on((data: GameState) => setGameState(data));
+	deckGun.get('prime').on((data: string, _, __, e) => {
+		prime = BigInt('0x' + data);
+		e.off();
+	});
+	deckGun.get('playerOrder').on((data: string, _, __, e) => {
+		playerOrder = data.split(',');
+		e.off();
+	});
+	deckGun.get('deck').on((data: string, _, __, e) => {
+		const [turn, deckStr] = data.split('|');
+
+		const deck = toDeck(deckStr);
 		setDeck(deck);
 
-		const myTurn = playerOrder.indexOf(name.current ?? '') === data.turn;
-		const nextTurn = (data.turn + 1) % playerOrder.length;
+		const myTurn = playerOrder.indexOf(name.current ?? '') === +turn;
+		const nextTurn = (+turn + 1) % playerOrder.length;
 
-		if (data.gameState === GameState.GAME_STARTED) {
-			setTurn(data.turn);
-			setGameState(GameState.GAME_STARTED);
-		} else if (myTurn) {
+		if (myTurn) {
 			if (gameState() === GameState.NOT_ENCRYPTED) {
-				console.log('NOT_ENCRYPTED', data.turn);
+				console.log('NOT_ENCRYPTED', turn);
 				key = generateKeyFromPrime(prime);
 				eachKey = deck.map(_ => generateKeyFromPrime(prime!).toString());
 				setGameState(GameState.ENCRYPTED);
 
 				const encryptedDeck = deck.map(card => encrypt(card, key!)).sort(() => Math.random() - 0.5);
 
-				deckGun.put({ prime: data.prime, deck: toGunDeck(encryptedDeck), playerOrder: data.playerOrder, turn: nextTurn });
+				deckGun.get('deck').put(`${nextTurn}|` + toGunDeck(encryptedDeck));
 			} else if (gameState() === GameState.ENCRYPTED) {
-				console.log('ENCRYPTED', data.turn);
+				console.log('ENCRYPTED', turn);
 				const decryptedDeck = deck.map(card => decrypt(card, key!));
 				const eachEncryptedDeck = decryptedDeck.map((card, i) => encrypt(card, keyFromString(eachKey![i])));
 				setGameState(GameState.EACH_ENCRYPTED);
 				setDeck(eachEncryptedDeck);
 
-				deckGun.put({ prime: data.prime, deck: toGunDeck(eachEncryptedDeck), playerOrder: data.playerOrder, turn: nextTurn });
+				deckGun.get('deck').put(`${nextTurn}|` + toGunDeck(eachEncryptedDeck));
 			} else if (gameState() === GameState.EACH_ENCRYPTED) {
-				console.log('EACH_ENCRYPTED', data.turn);
-				if (data.turn === 0) {
-					setGameState(GameState.FINAL_ENCRYPTION_ROUND);
+				console.log('EACH_ENCRYPTED', turn);
+
+				if (+turn === 0) {
+					deckGun.get('gameState').put(GameState.GAME_STARTED);
+				} else {
+					deckGun.get('deck').put(`${nextTurn}|${deckStr}`);
 				}
 
-				deckGun.put({ prime: data.prime, deck: data.deck, playerOrder: data.playerOrder, turn: nextTurn });
-			} else if (gameState() === GameState.FINAL_ENCRYPTION_ROUND) {
-				console.log('FINAL_ENCRYPTION_ROUND', data.turn);
-
-				deckGun.put({ gameState: GameState.GAME_STARTED, turn: 0 });
+				e.off();
 			}
 		}
 	});
@@ -127,12 +124,14 @@ function deckGun(roomId: string, players: Accessor<string>, name: Ref<string>): 
 		if (name.current && type === 'draw') {
 			const message = new TextEncoder().encode(eachKey![turn].toString());
 			const encrypted = await rsa.encrypt(message, publicRsa);
-			keysGun.put({ [name.current]: encrypted.join(',') });
+
+			keysGun.get(name.current).put(encrypted.join(','));
 		}
 	});
 
 	keysGun.on(async (data: Record<string, any>, _key: any) => {
 		const { _, ...rest } = data;
+
 		const ok = Object.values(rest).filter(val => !!val).length === playerOrder?.length;
 
 		if (ok && turnOf === name.current) {
@@ -152,8 +151,8 @@ function deckGun(roomId: string, players: Accessor<string>, name: Ref<string>): 
 			const card = deck()[turn()];
 			const decrypted = decryptedKeys.reduce((acc, val) => decrypt(acc, keyFromString(val)), card);
 			console.log(turn(), decrypted.valueOf() - 2n);
-			requestGun.put('');
-			deckGun.put({ turn: turn() + 1 });
+			requestGun.put(null);
+			deckGun.get('turn').put(turn() + 1);
 
 			const nulled = Object.fromEntries(Object.entries(rest).map(([key]) => [key, null]));
 			keysGun.put(nulled);
@@ -164,7 +163,17 @@ function deckGun(roomId: string, players: Accessor<string>, name: Ref<string>): 
 		deck,
 		gameState,
 		init() {
-			deckGun.put({ prime: randomNBitPrime(8).toString(), deck: toGunDeck(deck()), playerOrder: players(), turn: 0 });
+			const pOrder = [
+				name.current,
+				...players()
+					.split(',')
+					.filter(val => val !== name.current),
+			].join(',');
+
+			deckGun.get('prime').put(randomNBitPrime(8).toString(16));
+			deckGun.get('playerOrder').put(pOrder);
+			deckGun.get('turn').put(0);
+			deckGun.get('deck').put(`1|${toGunDeck(deck())}`);
 		},
 		draw() {
 			if (name.current) {
