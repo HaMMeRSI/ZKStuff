@@ -8,6 +8,10 @@ export enum ShuffleState {
 	NOT_ENCRYPTED,
 	ENCRYPTED,
 	EACH_ENCRYPTED,
+	DRAW1,
+	DRAW2,
+	DRAW3,
+	DRAW4,
 }
 
 function toDeck(deck: string) {

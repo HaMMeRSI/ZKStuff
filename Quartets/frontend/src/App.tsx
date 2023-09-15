@@ -1,60 +1,41 @@
-import { For, Show, createSignal } from 'solid-js';
+import { Show, createSignal } from 'solid-js';
 import './App.css';
 import RoomsGun from './repositories/rooms.gun';
-import { createRef } from './utils';
-import { GameState } from './repositories/room.gun';
+import { Welcome } from './components/Welcome';
+import { Rooms } from './components/Rooms';
+import { Room } from './components/Room';
 
 function App() {
 	const { activeRoom, join, roomIds } = RoomsGun();
-	const leaveRoom = createRef<VoidFunction>();
-
 	const [name, setName] = createSignal('');
+	const [leaveRoom, setLeaveRoom] = createSignal(() => {});
 
-	async function createRoom() {
+	const hasActiveRoom = () => !!activeRoom();
+	window.onbeforeunload = () => leaveRoom();
+
+	async function onJoin(roomId: string) {
 		if (name()) {
-			leaveRoom.current = await join(name());
+			const leave = await join(name(), roomId);
+			setLeaveRoom(() => leave);
 		}
 	}
 
-	window.onbeforeunload = () => leaveRoom.current?.();
+	async function createRoom() {
+		if (name()) {
+			const leave = await join(name());
+			setLeaveRoom(() => leave);
+		}
+	}
 
 	return (
 		<div>
-			<h1>Hello {name()}!</h1>
-			<Show when={!activeRoom()}>
-				<input type="text" value={name()} onInput={e => setName(e.currentTarget.value)} />
-				<br />
+			<h1>Hello {name() || 'Guest'}!</h1>
+			<Show when={!hasActiveRoom()}>
+				<Welcome name={name()} setName={setName} />
+				<Rooms join={onJoin} create={createRoom} rooms={[...roomIds().values()]} />
 			</Show>
-			<Show when={!activeRoom()}>
-				<For each={[...roomIds().values()]}>
-					{roomId => (
-						<div>
-							{roomId}
-							<button onClick={async () => name() && (leaveRoom.current = await join(name(), roomId))}>Join</button>
-						</div>
-					)}
-				</For>
-				<button onClick={createRoom}>Create Room</button>
-			</Show>
-			<Show when={activeRoom()}>
-				<For each={(activeRoom()?.players() ?? '').split(',')}>{player => <div>{player}</div>}</For>
-				<button onClick={() => leaveRoom.current?.()}>Leave Room</button>
-				<Show when={(activeRoom()?.players()?.split(',').length ?? 0) > 1 && (activeRoom()?.gameState() ?? 0) < GameState.GAME_STARTED}>
-					<button onClick={() => activeRoom()?.start()}>Start Game</button>
-				</Show>
-				<Show when={(activeRoom()?.gameState() ?? 0) === GameState.GAME_STARTED}>
-					<button onClick={() => activeRoom()?.draw()}>Draw</button>
-				</Show>
-			</Show>
-			<Show when={activeRoom()?.players()?.length}>
-				<div
-					style={{
-						'max-width': '300px',
-						overflow: 'auto',
-						padding: '10px',
-					}}>
-					<For each={activeRoom()?.deck?.() ?? []}>{item => <span>{item.toString()},</span>}</For>
-				</div>
+			<Show when={hasActiveRoom()}>
+				<Room room={activeRoom()!} leaveRoom={leaveRoom()} player={name()} />
 			</Show>
 		</div>
 	);
