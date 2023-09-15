@@ -5,6 +5,7 @@ import 'gun/lib/radisk';
 import 'gun/lib/store';
 import 'gun/lib/rindexed';
 import 'gun/lib/webrtc';
+import 'gun/lib/open';
 
 // export const gun = Gun({ peers: ['http://localhost:8000/gun','https://gun-manhattan.herokuapp.com/gun'], localStorage: false });
 export const gun = Gun({ peers: ['http://localhost:8000/gun'],  });

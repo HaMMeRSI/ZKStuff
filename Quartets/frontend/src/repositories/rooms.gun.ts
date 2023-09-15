@@ -31,13 +31,11 @@ function roomsGun(): IRoomsGun {
 				roomId = nanoid();
 			}
 
-			const room = roomGun(roomId);
-			const leave = await room.join(name);
+			const room = await roomGun(roomId, name, () => setActiveRoom());
 			setActiveRoom(room);
 
 			return () => {
-				leave();
-				setActiveRoom();
+				room.leave();
 			};
 		},
 	};

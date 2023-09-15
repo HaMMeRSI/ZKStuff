@@ -1,81 +1,102 @@
 import { gun } from '@/gun';
 import { Accessor, createSignal } from 'solid-js';
 
-import { APP, PLAYERS, ROOMS } from './tables.index';
-import deckGun, { GameState } from './deck.gun';
-import { createRef } from '@/utils';
+import { APP, ROOMS } from './tables.index';
+import deckGun from './deck.gun';
+import { shamir3pass } from 'shamir3pass';
+import { gunOn } from '@/utils';
+
+export enum GameState {
+	READY,
+	GAME_STARTED,
+}
 
 export interface IRoomGun {
 	deck?: Accessor<BigInt[]>;
 	gameState: Accessor<GameState>;
 	roomId: string;
 	players: Accessor<string>;
-	join(name: string): Promise<() => void>;
 	start: () => void;
 	draw: VoidFunction;
+	leave: VoidFunction;
 }
 
 function getPlayers(roomGun: any): Promise<string> {
 	return new Promise((resolve, _reject) => {
-		roomGun.get(PLAYERS).once((data: string, _key: any) => {
+		roomGun.get('players').once((data: string, _key: any) => {
 			resolve(data);
 		});
 	});
 }
 
-function roomGun(roomId: string): IRoomGun {
-	let playerName = createRef('');
+async function roomGun(roomId: string, name: string, onLeave: VoidFunction): Promise<IRoomGun> {
+	const [gameState, setGameState] = createSignal(GameState.READY);
+	const [turn, setTurn] = createSignal(0);
 	const [players, setPlayers] = createSignal<string>('');
-	const { deck, init, gameState, off, draw } = deckGun(roomId, players, playerName);
+	const { deck, init, off, draw, shuffle } = deckGun(roomId, name);
 
 	const roomGun = gun.get(APP).get(ROOMS).get(roomId);
-	const playersGun = gun.get(APP).get(ROOMS).get(roomId).get(PLAYERS);
-	const playersListener = roomGun.on((data: Record<string, string>, _key: any) => {
-		const { players } = data ?? {};
+	const atEnterPlayers = await getPlayers(roomGun);
+	roomGun.get('players').put(atEnterPlayers ? [...atEnterPlayers.split(',').filter(n => n !== name), name].join(',') : name);
 
-		setPlayers(players);
+	const offTurn = gunOn(roomGun.get('turn'), (data: number) => setTurn(data));
+	const offPlayers = gunOn(roomGun.get('players'), (data: string) => setPlayers(data));
+	const offState = gunOn(roomGun.get('gameState'), (data: GameState) => setGameState(data));
+	const offInit = gunOn(roomGun.get('init'), (data: any) => {
+		if (!data.prime || !data.playerOrder) return;
+		init(BigInt('0x' + data.prime), data.playerOrder.split(','));
 	});
 
 	return {
-		draw,
+		draw: () => {
+			draw(turn());
+			roomGun.get('turn').put(turn() + 1);
+		},
 		deck,
 		roomId,
 		players,
 		gameState,
 		start() {
-			init();
+			const { randomNBitPrime } = shamir3pass();
+			const excluded = players()
+				.split(',')
+				.filter(val => val !== name);
+
+			const playerOrder = [name, ...excluded].join(',');
+
+			roomGun
+				.get('init')
+				.put({ prime: randomNBitPrime(8).toString(16), playerOrder }, _ => shuffle(() => roomGun.get('gameState').put(GameState.GAME_STARTED)));
 		},
-		async join(name: string) {
-			playerName.current = name;
-			const aplayers = await getPlayers(roomGun);
+		leave() {
+			const afterPlayers = players()
+				.split(',')
+				.filter(val => val !== name);
 
-			playersGun.put(aplayers ? [...aplayers.split(',').filter(n => n !== name), name].join(',') : name);
+			if (afterPlayers.length === 0) {
+				offPlayers.current?.();
+				offTurn.current?.();
+				offState.current?.();
+				offInit.current?.();
+				roomGun.get('players').put(null);
+				roomGun.get('turn').put(null);
+				roomGun.get('gameState').put(null);
+				roomGun.get('init').put({ prime: null, playerOrder: null });
+			} else {
+				roomGun.get('players').put(afterPlayers.join(','));
+			}
 
-			return () => {
-				playersListener.off();
-				playersGun.off();
-				roomGun.off();
-				off();
-
-				const afterPlayers = players()
-					.split(',')
-					.filter(val => val !== name);
-
-				if (afterPlayers.length === 0) {
-					playersGun.put(null);
-				} else {
-					playersGun.put(afterPlayers.join(','));
-				}
-			};
+			off();
+			onLeave();
 		},
 	};
 }
 
-export default function (roomId: string) {
+export default function (roomId: string, name: string, onLeave: VoidFunction) {
 	let room: ReturnType<typeof roomGun> | null = null;
 
 	if (!room) {
-		room = roomGun(roomId);
+		room = roomGun(roomId, name, onLeave);
 	}
 
 	return room;

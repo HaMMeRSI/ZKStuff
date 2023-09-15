@@ -2,7 +2,7 @@ import { For, Show, createSignal } from 'solid-js';
 import './App.css';
 import RoomsGun from './repositories/rooms.gun';
 import { createRef } from './utils';
-import { GameState } from './repositories/deck.gun';
+import { GameState } from './repositories/room.gun';
 
 function App() {
 	const { activeRoom, join, roomIds } = RoomsGun();
@@ -47,7 +47,14 @@ function App() {
 				</Show>
 			</Show>
 			<Show when={activeRoom()?.players()?.length}>
-				<For each={activeRoom()?.deck?.() ?? []}>{item => <span>{item.toString()},</span>}</For>
+				<div
+					style={{
+						'max-width': '300px',
+						overflow: 'auto',
+						padding: '10px',
+					}}>
+					<For each={activeRoom()?.deck?.() ?? []}>{item => <span>{item.toString()},</span>}</For>
+				</div>
 			</Show>
 		</div>
 	);

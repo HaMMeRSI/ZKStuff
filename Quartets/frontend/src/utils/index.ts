@@ -1,4 +1,4 @@
-import { Ref } from './types';
+import { IDeferedObject, Ref } from './types';
 
 export function createRef<T>(initial?: T): Ref<T> {
 	return {
@@ -58,4 +58,29 @@ export function RSA() {
 			return window.crypto.subtle.decrypt({ name: 'RSA-OAEP' }, pKey, message);
 		},
 	};
+}
+
+export function defer<T = unknown>() {
+	let resolve: (arg: T) => void = () => {};
+	let reject: (arg: unknown) => void = () => {};
+
+	const promise = new Promise((_resolve, _reject) => {
+		resolve = _resolve;
+		reject = _reject;
+	}) as IDeferedObject<T>;
+
+	promise.resolve = resolve;
+	promise.reject = reject;
+
+	return promise;
+}
+
+export function gunOn<T>(chain: any, fn: (data: T, key: any, _: any, ev: any) => void) {
+	let ev = createRef(() => {});
+	chain.on((_d: T, _k: any, _: any, event: any) => {
+		fn(_d, _k, _, event);
+		ev.current = () => event.off();
+	});
+
+	return ev;
 }
