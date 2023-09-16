@@ -20,7 +20,8 @@ const playerContainer: (name: string, player: string, turn: string, selected: st
 
 	return {
 		'background-color': turnOf && !myTurn ? 'yellow' : 'white',
-		border: `1px solid ${myTurn && selected ? 'green' : 'black'}`,
+		border: '1px solid gray',
+		outline: selected ? '3px solid green' : 'none',
 		padding: '10px',
 		'border-radius': '10px',
 		'font-size': '1.5em',
@@ -51,7 +52,7 @@ export function Players(props: IProps) {
 
 	return (
 		<div style={container}>
-			<For each={props.players}>
+			<For each={props.players.filter(x => x !== props.player)}>
 				{player => (
 					<div onClick={() => select(player)} style={playerContainer(props.player, player, props.turnOf, selectedPlayer())}>
 						{player}

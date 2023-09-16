@@ -54,13 +54,13 @@ async function roomGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 	const draw4Defer = defer();
 	const drawed: Record<number, boolean> = {};
 
-	const offDraw = gunOn(roomGun.get('draw'), async (turn: number) => {
+	const offDraw4 = gunOn(roomGun.get('draw'), async (turn: number) => {
 		const myTurn = playersOrder().indexOf(name) === turn % playersOrder().length;
 		const nextTurn = turn + 1;
 
 		if (turn === playersOrder().length * 4) {
 			draw4Defer.resolve(null);
-			offDraw.current?.();
+			offDraw4.current?.();
 		} else if (myTurn && !drawed[turn]) {
 			drawed[turn] = true;
 
@@ -107,7 +107,7 @@ async function roomGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 				offTurn.current?.();
 				offState.current?.();
 				offInit.current?.();
-				offDraw.current?.();
+				offDraw4.current?.();
 				roomGun.get('players').put(null);
 				roomGun.get('turn').put(null);
 				roomGun.get('gameState').put(null);

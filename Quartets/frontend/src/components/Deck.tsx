@@ -1,78 +1,46 @@
-const DIAMOND = '♦';
-const SPADE = '♠';
-const CLUB = '♣';
-const HEART = '♥';
-const CARDS = [
-	'A' + DIAMOND,
-	'2' + DIAMOND,
-	'3' + DIAMOND,
-	'4' + DIAMOND,
-	'5' + DIAMOND,
-	'6' + DIAMOND,
-	'7' + DIAMOND,
-	'8' + DIAMOND,
-	'9' + DIAMOND,
-	'10' + DIAMOND,
-	'J' + DIAMOND,
-	'Q' + DIAMOND,
-	'K' + DIAMOND,
-	'A' + SPADE,
-	'2' + SPADE,
-	'3' + SPADE,
-	'4' + SPADE,
-	'5' + SPADE,
-	'6' + SPADE,
-	'7' + SPADE,
-	'8' + SPADE,
-	'9' + SPADE,
-	'10' + SPADE,
-	'J' + SPADE,
-	'Q' + SPADE,
-	'K' + SPADE,
-	'A' + CLUB,
-	'2' + CLUB,
-	'3' + CLUB,
-	'4' + CLUB,
-	'5' + CLUB,
-	'6' + CLUB,
-	'7' + CLUB,
-	'8' + CLUB,
-	'9' + CLUB,
-	'10' + CLUB,
-	'J' + CLUB,
-	'Q' + CLUB,
-	'K' + CLUB,
-	'A' + HEART,
-	'2' + HEART,
-	'3' + HEART,
-	'4' + HEART,
-	'5' + HEART,
-	'6' + HEART,
-	'7' + HEART,
-	'8' + HEART,
-	'9' + HEART,
-	'10' + HEART,
-	'J' + HEART,
-	'Q' + HEART,
-	'K' + HEART,
-];
+import { CARDS } from '@/utils/cards';
+import { createSignal } from 'solid-js';
+import { JSX } from 'solid-js/jsx-runtime';
+
+const deckContainer: JSX.CSSProperties = {
+	'max-width': '380px',
+	display: 'flex',
+	'flex-wrap': 'wrap',
+	gap: '10px',
+	'justify-content': 'space-between',
+	'max-height': '230px',
+	overflow: 'auto',
+};
+
+const cardContainer = (myTurn: boolean, selected: Boolean): JSX.CSSProperties => {
+	return {
+		border: '1px solid gray',
+		outline: selected ? '3px solid green' : 'none',
+		padding: '10px',
+		'border-radius': '10px',
+		'font-size': '1.5em',
+		'font-weight': 'bold',
+		'user-select': 'none',
+		width: '45px',
+		cursor: myTurn ? 'pointer' : 'default',
+	};
+};
 
 interface IProps {
 	hand: BigInt[];
+	onSelect?(card: BigInt): void;
+	myTurn?: boolean;
 }
 
 export function Deck(props: IProps) {
-	console.log(CARDS.length);
+	const [selectedCard, setSelectedCard] = createSignal<BigInt>(-1n);
 
 	return (
-		<div
-			style={{
-				'max-width': '300px',
-				overflow: 'auto',
-				padding: '10px',
-			}}>
-			{props.hand.map(card => (
-				<span>{CARDS[Number(card)]},</span>
+		<div style={deckContainer}>
+			{props.hand.map(x => (
+				<div onClick={() => props.myTurn && setSelectedCard(x)} style={cardContainer(props.myTurn ?? false, selectedCard() === x)}>
+					{CARDS[Number(x)]}
+				</div>
 			))}
 		</div>
 	);

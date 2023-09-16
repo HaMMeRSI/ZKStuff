@@ -2,6 +2,7 @@ import { GameState, IRoomGun } from '@/repositories/room.gun';
 import { JSX, Show, createSignal } from 'solid-js';
 import { Players } from './Players';
 import { Deck } from './Deck';
+import { CARDS } from '@/utils/cards';
 
 const contolsContainer: JSX.CSSProperties = {
 	display: 'flex',
@@ -21,6 +22,9 @@ export function Room(props: IProps) {
 	const players = () => props.room.playersOrder();
 	const gameState = () => props.room.gameState();
 	const turnOf = () => props.room.playersOrder()[props.room.turn() % props.room.playersOrder().length];
+	const myTurn = () => props.player === turnOf();
+
+	const leftDeck = () => CARDS.map((_, i) => (!props.room.hand().includes(BigInt(i)) ? BigInt(i) : -1n)).filter(x => x !== -1n);
 
 	return (
 		<>
@@ -36,6 +40,9 @@ export function Room(props: IProps) {
 			</div>
 			<div>turn: {props.room.turn()}</div>
 			<Deck hand={props.room.hand()} />
+			<br />
+			<br />
+			<Deck hand={leftDeck()} myTurn={myTurn()} />
 		</>
 	);
 }

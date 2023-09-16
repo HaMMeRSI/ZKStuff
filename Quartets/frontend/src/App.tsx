@@ -37,16 +37,6 @@ function App() {
 			<Show when={hasActiveRoom()}>
 				<Room room={activeRoom()!} leaveRoom={leaveRoom()} player={name()} />
 			</Show>
-			<Show when={activeRoom()?.playersOrder()?.length}>
-				<div
-					style={{
-						'max-width': '300px',
-						overflow: 'auto',
-						padding: '10px',
-					}}>
-					<For each={activeRoom()?.deck?.() ?? []}>{item => <span>{item.toString()},</span>}</For>
-				</div>
-			</Show>
 		</div>
 	);
 }
