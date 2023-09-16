@@ -1,4 +1,4 @@
-import { For, createSignal } from 'solid-js';
+import { For } from 'solid-js';
 import { JSX } from 'solid-js/jsx-runtime';
 
 const container: JSX.CSSProperties = {
@@ -35,17 +35,18 @@ interface IProps {
 	players: string[];
 	player: string;
 	turnOf: string;
+
+	onPlayerSelect(player: string): void;
+	selectedPlayer: string;
 }
 
 export function Players(props: IProps) {
-	const [selectedPlayer, setSelectedPlayer] = createSignal<string>('');
-
 	function select(selected: string) {
 		if (props.player !== selected && props.turnOf === props.player) {
-			if (selectedPlayer() === selected) {
-				setSelectedPlayer('');
+			if (props.selectedPlayer === selected) {
+				props.onPlayerSelect('');
 			} else {
-				setSelectedPlayer(selected);
+				props.onPlayerSelect(selected);
 			}
 		}
 	}
@@ -54,7 +55,7 @@ export function Players(props: IProps) {
 		<div style={container}>
 			<For each={props.players.filter(x => x !== props.player)}>
 				{player => (
-					<div onClick={() => select(player)} style={playerContainer(props.player, player, props.turnOf, selectedPlayer())}>
+					<div onClick={() => select(player)} style={playerContainer(props.player, player, props.turnOf, props.selectedPlayer)}>
 						{player}
 					</div>
 				)}

@@ -1,5 +1,4 @@
 import { CARDS } from '@/utils/cards';
-import { createSignal } from 'solid-js';
 import { JSX } from 'solid-js/jsx-runtime';
 
 const deckContainer: JSX.CSSProperties = {
@@ -10,6 +9,7 @@ const deckContainer: JSX.CSSProperties = {
 	'justify-content': 'space-between',
 	'max-height': '230px',
 	overflow: 'auto',
+	padding: '5px',
 };
 
 const cardContainer = (myTurn: boolean, selected: Boolean): JSX.CSSProperties => {
@@ -28,17 +28,17 @@ const cardContainer = (myTurn: boolean, selected: Boolean): JSX.CSSProperties =>
 
 interface IProps {
 	hand: BigInt[];
-	onSelect?(card: BigInt): void;
+
+	onCardSelect?(card: BigInt): void;
+	selectedCard?: BigInt | null;
 	myTurn?: boolean;
 }
 
 export function Deck(props: IProps) {
-	const [selectedCard, setSelectedCard] = createSignal<BigInt>(-1n);
-
 	return (
 		<div style={deckContainer}>
 			{props.hand.map(x => (
-				<div onClick={() => props.myTurn && setSelectedCard(x)} style={cardContainer(props.myTurn ?? false, selectedCard() === x)}>
+				<div onClick={() => props.myTurn && props.onCardSelect?.(x)} style={cardContainer(props.myTurn ?? false, props.selectedCard === x)}>
 					{CARDS[Number(x)]}
 				</div>
 			))}

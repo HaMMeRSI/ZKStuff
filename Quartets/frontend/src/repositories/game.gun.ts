@@ -4,21 +4,23 @@ import { Accessor, createSignal } from 'solid-js';
 import { APP, ROOMS } from './tables.index';
 import deckGun from './deck.gun';
 import { shamir3pass } from 'shamir3pass';
-import { defer, gunOn } from '@/utils';
+import { createRef, defer, gunOn } from '@/utils';
+import { IDeferedObject } from '@/utils/types';
 
 export enum GameState {
 	READY,
 	GAME_STARTED,
 }
 
-export interface IRoomGun {
+export interface IGameGun {
 	roomId: string;
 	deck?: Accessor<BigInt[]>;
 	hand: Accessor<BigInt[]>;
 	gameState: Accessor<GameState>;
 	playersOrder: Accessor<string[]>;
 	start: () => void;
-	draw: VoidFunction;
+	draw: () => Promise<BigInt>;
+	request: (from: string, card: BigInt | null) => Promise<Boolean>;
 	leave: VoidFunction;
 	turn: Accessor<number>;
 }
@@ -31,7 +33,7 @@ function getPlayers(roomGun: any): Promise<string> {
 	});
 }
 
-async function roomGun(roomId: string, name: string, onLeave: VoidFunction): Promise<IRoomGun> {
+async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Promise<IGameGun> {
 	const [gameState, setGameState] = createSignal(GameState.READY);
 	const [hand, setHand] = createSignal<BigInt[]>([]);
 	const [turn, setTurn] = createSignal(0);
@@ -51,6 +53,7 @@ async function roomGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 		init(BigInt('0x' + data.prime), data.playerOrder.split(','));
 	});
 
+	const requestCardDefer = createRef<IDeferedObject<Boolean>>();
 	const draw4Defer = defer();
 	const drawed: Record<number, boolean> = {};
 
@@ -64,11 +67,39 @@ async function roomGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 		} else if (myTurn && !drawed[turn]) {
 			drawed[turn] = true;
 
-			const card = await draw(turn);
+			const card = await draw();
 			setHand([...hand(), card]);
 			roomGun.get('draw').put(nextTurn);
 		}
 	});
+
+	const offRequestCard = gunOn(roomGun.get('request').get('card'), async (data: string) => {
+		if (!data) return;
+
+		const [from, reqCard] = data.split('|');
+		const card = BigInt('0x' + reqCard);
+
+		if (name === from) {
+			const includes = hand().includes(card);
+			if (includes) {
+				setHand(hand().filter(val => val !== card));
+			}
+
+			roomGun.get('request').get('card').put(null);
+			roomGun.get('response').get('card').put(includes);
+		}
+	});
+
+	const offResponseCard = gunOn(roomGun.get('response').get('card'), (data: Boolean) => {
+		requestCardDefer.current?.resolve(data);
+	});
+
+	async function drawCard() {
+		const newCard = await draw();
+		setHand([...hand(), newCard]);
+
+		return newCard;
+	}
 
 	return {
 		deck,
@@ -77,10 +108,26 @@ async function roomGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 		roomId,
 		playersOrder,
 		gameState,
-		async draw() {
-			const newCard = await draw(turn());
-			setHand([...hand(), newCard]);
-			roomGun.get('turn').put(turn() + 1);
+		draw: drawCard,
+		async request(from: string, card: BigInt | null) {
+			if (!card || !from) return false;
+
+			requestCardDefer.current = defer<Boolean>();
+			roomGun
+				.get('request')
+				.get('card')
+				.put(`${from}|${card.toString(16)}`);
+
+			const res = await requestCardDefer.current;
+
+			if (res) {
+				setHand([...hand(), card]);
+			} else {
+				roomGun.get('turn').put(turn() + 1);
+				await drawCard();
+			}
+
+			return res;
 		},
 		start() {
 			const { randomNBitPrime } = shamir3pass();
@@ -108,6 +155,9 @@ async function roomGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 				offState.current?.();
 				offInit.current?.();
 				offDraw4.current?.();
+				offRequestCard.current?.();
+				offResponseCard.current?.();
+
 				roomGun.get('players').put(null);
 				roomGun.get('turn').put(null);
 				roomGun.get('gameState').put(null);
@@ -123,10 +173,10 @@ async function roomGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 }
 
 export default function (roomId: string, name: string, onLeave: VoidFunction) {
-	let room: ReturnType<typeof roomGun> | null = null;
+	let room: ReturnType<typeof gameGun> | null = null;
 
 	if (!room) {
-		room = roomGun(roomId, name, onLeave);
+		room = gameGun(roomId, name, onLeave);
 	}
 
 	return room;

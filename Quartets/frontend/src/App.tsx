@@ -1,9 +1,9 @@
-import { For, Show, createSignal } from 'solid-js';
+import {  Show, createSignal } from 'solid-js';
 import './App.css';
 import RoomsGun from './repositories/rooms.gun';
 import { Welcome } from './components/Welcome';
 import { Rooms } from './components/Rooms';
-import { Room } from './components/Room';
+import { Game } from './components/Game';
 
 function App() {
 	const { activeRoom, join, roomIds } = RoomsGun();
@@ -35,7 +35,7 @@ function App() {
 				<Rooms join={onJoin} create={createRoom} rooms={[...roomIds().values()]} />
 			</Show>
 			<Show when={hasActiveRoom()}>
-				<Room room={activeRoom()!} leaveRoom={leaveRoom()} player={name()} />
+				<Game room={activeRoom()!} leaveRoom={leaveRoom()} player={name()} />
 			</Show>
 		</div>
 	);

@@ -1,19 +1,19 @@
 import { gun } from '@/gun';
 import { nanoid } from 'nanoid';
-import roomGun, { IRoomGun } from './room.gun';
+import roomGun, { IGameGun } from './game.gun';
 import { APP, ROOMS } from './tables.index';
 import { Accessor, createSignal } from 'solid-js';
 
 export interface IRoomsGun {
 	roomIds: Accessor<Set<string>>;
-	activeRoom: Accessor<IRoomGun | undefined>;
+	activeRoom: Accessor<IGameGun | undefined>;
 	join(name: string, roomId?: string): Promise<VoidFunction>;
 }
 
 function roomsGun(): IRoomsGun {
 	const roomsGun = gun.get(APP).get(ROOMS);
 	const [roomIds, setRoomIds] = createSignal<Set<string>>(new Set());
-	const [activeRoom, setActiveRoom] = createSignal<IRoomGun>();
+	const [activeRoom, setActiveRoom] = createSignal<IGameGun>();
 
 	roomsGun.map().on((data: Record<string, boolean>, key: any) => {
 		const set = new Set([...roomIds().values()]);
