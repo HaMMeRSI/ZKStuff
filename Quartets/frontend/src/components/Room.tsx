@@ -1,6 +1,7 @@
 import { GameState, IRoomGun } from '@/repositories/room.gun';
-import { JSX, Show } from 'solid-js';
+import { JSX, Show, createSignal } from 'solid-js';
 import { Players } from './Players';
+import { Deck } from './Deck';
 
 const contolsContainer: JSX.CSSProperties = {
 	display: 'flex',
@@ -33,6 +34,8 @@ export function Room(props: IProps) {
 					<button onClick={() => props.room.draw()}>Draw</button>
 				</Show>
 			</div>
+			<div>turn: {props.room.turn()}</div>
+			<Deck hand={props.room.hand()} />
 		</>
 	);
 }

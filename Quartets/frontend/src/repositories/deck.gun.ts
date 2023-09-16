@@ -2,7 +2,8 @@ import { gun } from '@/gun';
 import { APP, DECKS as DECK, KEYS, REQUEST, ROOMS } from './tables.index';
 import { Key, keyFromString, shamir3pass } from 'shamir3pass';
 import { Accessor, createSignal } from 'solid-js';
-import { RSA, gunOn } from '@/utils';
+import { RSA, createRef, defer, gunOn } from '@/utils';
+import { IDeferedObject, Ref } from '@/utils/types';
 
 export enum ShuffleState {
 	NOT_ENCRYPTED,
@@ -25,7 +26,7 @@ function toGunDeck(deck: BigInt[]) {
 export interface IDecksGun {
 	deck: Accessor<BigInt[]>;
 	init: (prime: BigInt, order: string[]) => void;
-	draw: (turn: number) => void;
+	draw: (turn: number) => Promise<BigInt>;
 	off: () => void;
 	clean: VoidFunction;
 	shuffle: (onEnd: VoidFunction) => void;
@@ -45,6 +46,7 @@ function deckGun(roomId: string, player: string): IDecksGun {
 	const [shuffleState, setShuffleState] = createSignal<ShuffleState>(ShuffleState.NOT_ENCRYPTED);
 	const [deck, setDeck] = createSignal<BigInt[]>(Array.from(new Array(52), (_, i) => BigInt(i + 2)));
 
+	let drawDefer: Ref<IDeferedObject<BigInt>> = createRef();
 	let key: Key;
 	let eachKey: string[] = [];
 	let playerOrder: string[] = [];
@@ -61,12 +63,12 @@ function deckGun(roomId: string, player: string): IDecksGun {
 		privateRsa = privateKey;
 	});
 
-	const requestGun = gun.get(APP).get(ROOMS).get(roomId).get(REQUEST).get('draw');
+	const drawRequestGun = gun.get(APP).get(ROOMS).get(roomId).get(REQUEST).get('draw');
 	const roomDeckGun = gun.get(APP).get(ROOMS).get(roomId).get(DECK);
 	const deckGun = roomDeckGun.get('deck');
 	const keysGun = roomDeckGun.get(KEYS);
 
-	const offShuffle = gunOn(deckGun, (data: string) => {
+	const offShuffle = gunOn(deckGun, async (data: string) => {
 		if (!data) {
 			return;
 		}
@@ -108,7 +110,7 @@ function deckGun(roomId: string, player: string): IDecksGun {
 		}
 	});
 
-	const requestOff = gunOn(requestGun, async (data: string, _key: any) => {
+	const requestOff = gunOn(drawRequestGun, async (data: string, _key: any) => {
 		if (!data) {
 			return;
 		}
@@ -144,11 +146,13 @@ function deckGun(roomId: string, player: string): IDecksGun {
 
 			const card = deck()[turn];
 			const decrypted = decryptedKeys.reduce((acc, val) => decrypt(acc, keyFromString(val)), card);
-			console.log(turn, decrypted.valueOf() - 2n);
-			requestGun.put(null);
-
 			const nulled = Object.fromEntries(Object.entries(rest).map(([key]) => [key, null]));
-			keysGun.put(nulled);
+
+			keysGun.put(nulled, () => {
+				drawRequestGun.put(null);
+				drawDefer.current!.resolve(decrypted.valueOf() - 2n);
+				console.log(turn, decrypted.valueOf() - 2n);
+			});
 		}
 	});
 
@@ -162,14 +166,18 @@ function deckGun(roomId: string, player: string): IDecksGun {
 			deckGun.put(`1|${toGunDeck(deck())}`);
 			onShuffleEnd = onEnd;
 		},
-		draw(turn: number) {
-			requestGun.put(JSON.stringify({ type: 'draw', requestedBy: player, turn, publicRsa }));
-		},
+		async draw(turn: number) {
+			drawDefer.current = defer();
+			drawRequestGun.put(JSON.stringify({ type: 'draw', requestedBy: player, turn, publicRsa }));
+			const res = await drawDefer.current;
+
+			return res;
+		}, 
 		off() {
 			requestOff.current?.();
 			offShuffle.current?.();
 			keysoff.current?.();
-			requestGun.put(null);
+			drawRequestGun.put(null);
 			deckGun.put(null);
 		},
 		clean() {},

@@ -1,4 +1,4 @@
-import { Show, createSignal } from 'solid-js';
+import { For, Show, createSignal } from 'solid-js';
 import './App.css';
 import RoomsGun from './repositories/rooms.gun';
 import { Welcome } from './components/Welcome';
@@ -11,7 +11,7 @@ function App() {
 	const [leaveRoom, setLeaveRoom] = createSignal(() => {});
 
 	const hasActiveRoom = () => !!activeRoom();
-	window.onbeforeunload = () => leaveRoom();
+	window.onbeforeunload = () => leaveRoom()();
 
 	async function onJoin(roomId: string) {
 		if (name()) {
@@ -36,6 +36,16 @@ function App() {
 			</Show>
 			<Show when={hasActiveRoom()}>
 				<Room room={activeRoom()!} leaveRoom={leaveRoom()} player={name()} />
+			</Show>
+			<Show when={activeRoom()?.playersOrder()?.length}>
+				<div
+					style={{
+						'max-width': '300px',
+						overflow: 'auto',
+						padding: '10px',
+					}}>
+					<For each={activeRoom()?.deck?.() ?? []}>{item => <span>{item.toString()},</span>}</For>
+				</div>
 			</Show>
 		</div>
 	);
