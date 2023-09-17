@@ -2,6 +2,7 @@ const DIAMOND = '♦';
 const SPADE = '♠';
 const CLUB = '♣';
 const HEART = '♥';
+
 export const CARDS = [
 	'A' + DIAMOND,
 	'2' + DIAMOND,

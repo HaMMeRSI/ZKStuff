@@ -23,15 +23,14 @@ export function Game(props: IProps) {
 	const gameState = () => props.room.gameState();
 	const myTurn = () => props.player === turnOf();
 	const turnOf = () => props.room.playersOrder()[props.room.turn() % props.room.playersOrder().length];
-	const leftDeck = () => CARDS.map((_, i) => (!props.room.hand().includes(BigInt(i)) ? BigInt(i) : -1n)).filter(x => x !== -1n);
+	const leftDeck = () => CARDS.map((_, i) => (!props.room.hand().includes(i) ? i : -1)).filter(x => x !== -1);
 
-	const [requestedCard, setRequestedCard] = createSignal<BigInt | null>(null);
+	const [requestedCard, setRequestedCard] = createSignal(-1);
 	const [requestedFrom, setRequestedFrom] = createSignal<string>('');
-
 
 	createEffect(() => {
 		if (!myTurn()) {
-			setRequestedCard(null);
+			setRequestedCard(-1);
 			setRequestedFrom('');
 		}
 	});

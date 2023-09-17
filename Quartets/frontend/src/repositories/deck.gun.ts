@@ -26,9 +26,8 @@ function toGunDeck(deck: BigInt[]) {
 export interface IDecksGun {
 	deck: Accessor<BigInt[]>;
 	init: (prime: BigInt, order: string[]) => void;
-	draw: () => Promise<BigInt>;
+	draw: () => Promise<number>;
 	off: () => void;
-	clean: VoidFunction;
 	shuffle: (onEnd: VoidFunction) => void;
 }
 
@@ -46,12 +45,12 @@ function deckGun(roomId: string, player: string): IDecksGun {
 	const [shuffleState, setShuffleState] = createSignal<ShuffleState>(ShuffleState.NOT_ENCRYPTED);
 	const [deck, setDeck] = createSignal<BigInt[]>(Array.from(new Array(52), (_, i) => BigInt(i + 2)));
 
-	let drawDefer: Ref<IDeferedObject<BigInt>> = createRef();
+	let drawDefer: Ref<IDeferedObject<number>> = createRef();
 	let key: Key;
 	let eachKey: string[] = [];
 	let playerOrder: string[] = [];
 	let drawCount = 0;
-	let turnOf = '';
+	let requestedBy = '';
 	let prime = 0n;
 	let onShuffleEnd = () => {};
 
@@ -110,48 +109,45 @@ function deckGun(roomId: string, player: string): IDecksGun {
 		}
 	});
 
-	const requestOff = gunOn(drawRequestGun, async (data: string, _key: any) => {
+	const drawRequestOff = gunOn(drawRequestGun, async (data: string, _key: any) => {
 		if (!data) {
 			return;
 		}
 
-		const { drawCount: _drawCount, publicRsa, requestedBy } = JSON.parse(data) as IRequestPayload;
-		turnOf = requestedBy;
+		const { drawCount: _drawCount, publicRsa, requestedBy: _requestedBy } = JSON.parse(data) as IRequestPayload;
+		requestedBy = _requestedBy;
 		drawCount = _drawCount;
 
-		const message = new TextEncoder().encode(eachKey![drawCount].toString());
+		const message = new TextEncoder().encode(eachKey[drawCount].toString());
 		const encrypted = await rsa.encrypt(message, publicRsa);
 
 		keysGun.get(player).put(encrypted.join(','));
 	});
 
 	const keysoff = gunOn(keysGun, async (data: Record<string, any>, _key: any) => {
-		const { _, ...rest } = data;
-		const ok = Object.values(rest).filter(val => !!val).length === playerOrder?.length && turnOf === player;
+		const { _, ...encodedKeys } = data;
+		const ok = Object.values(encodedKeys).filter(Boolean).length === playerOrder?.length && requestedBy === player;
+		const decoder = new TextDecoder();
 
 		if (ok) {
-			turnOf = '';
+			requestedBy = '';
 
 			function decode(str: string) {
-				const arr = str.split(',').map(val => +val);
+				const arr = str.split(',').map(Number);
 				const u8 = Uint8Array.from(arr);
 
 				return rsa.decrypt(u8, privateRsa);
 			}
 
 			const keys = await Promise.all(playerOrder.map(player => decode(data[player] ?? eachKey![drawCount].toString())));
-			const decoder = new TextDecoder();
 			const decryptedKeys = keys.map(key => decoder.decode(key));
 
 			const card = deck()[drawCount];
 			const decrypted = decryptedKeys.reduce((acc, val) => decrypt(acc, keyFromString(val)), card);
-			const nulled = Object.fromEntries(Object.entries(rest).map(([key]) => [key, null]));
+			const nulled = Object.fromEntries(Object.entries(encodedKeys).map(([key]) => [key, null]));
 
-			keysGun.put(nulled, () => {
-				drawRequestGun.put(null);
-				drawDefer.current!.resolve(decrypted.valueOf() - 2n);
-				console.log(drawCount, decrypted.valueOf() - 2n);
-			});
+			drawRequestGun.put(null);
+			keysGun.put(nulled, () => drawDefer.current!.resolve(Number(decrypted.valueOf() - 2n)));
 		}
 	});
 
@@ -173,13 +169,12 @@ function deckGun(roomId: string, player: string): IDecksGun {
 			return res;
 		},
 		off() {
-			requestOff.current?.();
+			drawRequestOff.current?.();
 			offShuffle.current?.();
 			keysoff.current?.();
 			drawRequestGun.put(null);
 			deckGun.put(null);
 		},
-		clean() {},
 	};
 }
 

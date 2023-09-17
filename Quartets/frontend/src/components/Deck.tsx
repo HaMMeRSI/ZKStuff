@@ -27,10 +27,10 @@ const cardContainer = (myTurn: boolean, selected: Boolean): JSX.CSSProperties =>
 };
 
 interface IProps {
-	hand: BigInt[];
+	hand: number[];
 
-	onCardSelect?(card: BigInt): void;
-	selectedCard?: BigInt | null;
+	onCardSelect?(card: number): void;
+	selectedCard?: number;
 	myTurn?: boolean;
 }
 
