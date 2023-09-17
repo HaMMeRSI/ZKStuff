@@ -4,6 +4,7 @@ import { Key, keyFromString, shamir3pass } from 'shamir3pass';
 import { Accessor, createSignal } from 'solid-js';
 import { RSA, createRef, defer, gunOn } from '@/utils';
 import { IDeferedObject, Ref } from '@/utils/types';
+import { CARDS } from '@/utils/cards';
 
 export enum ShuffleState {
 	NOT_ENCRYPTED,
@@ -43,13 +44,13 @@ function deckGun(roomId: string, player: string): IDecksGun {
 	const { encrypt, decrypt, generateKeyFromPrime } = shamir3pass();
 
 	const [shuffleState, setShuffleState] = createSignal<ShuffleState>(ShuffleState.NOT_ENCRYPTED);
-	const [deck, setDeck] = createSignal<BigInt[]>(Array.from(new Array(52), (_, i) => BigInt(i + 2)));
+	const [deck, setDeck] = createSignal<BigInt[]>(Array.from(new Array(CARDS.length), (_, i) => BigInt(i + 2)));
 
 	let drawDefer: Ref<IDeferedObject<number>> = createRef();
 	let key: Key;
 	let eachKey: string[] = [];
 	let playerOrder: string[] = [];
-	let drawCount = 0;
+	let drawCount = -1;
 	let requestedBy = '';
 	let prime = 0n;
 	let onShuffleEnd = () => {};
@@ -139,7 +140,7 @@ function deckGun(roomId: string, player: string): IDecksGun {
 				return rsa.decrypt(u8, privateRsa);
 			}
 
-			const keys = await Promise.all(playerOrder.map(player => decode(data[player] ?? eachKey![drawCount].toString())));
+			const keys = await Promise.all(playerOrder.map(player => decode(data[player] ?? eachKey[drawCount].toString())));
 			const decryptedKeys = keys.map(key => decoder.decode(key));
 
 			const card = deck()[drawCount];

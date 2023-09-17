@@ -1,25 +1,32 @@
 import { For } from 'solid-js';
 import { JSX } from 'solid-js/jsx-runtime';
 
-const container: JSX.CSSProperties = {
+const container = (IWon: boolean): JSX.CSSProperties => ({
 	display: 'flex',
 	'justify-content': 'space-evenly',
 	'align-items': 'center',
 	gap: '10px',
 	margin: '10px',
-};
-const playerContainer: (name: string, player: string, turn: string, selected: string) => JSX.CSSProperties = (
-	name: string,
-	player: string,
-	turn: string,
-	selectedPlayer: string
-) => {
+	background: IWon ? 'gold' : 'transparent',
+});
+const playerContainer = (name: string, player: string, turn: string, selectedPlayer: string, winner: string): JSX.CSSProperties => {
 	const selected = selectedPlayer === player;
 	const myTurn = turn === name;
 	const turnOf = turn === player;
+	const HeWon = winner === player;
+
+	function getBGColor() {
+		if (HeWon) {
+			return 'gold';
+		} else if (turnOf && !myTurn) {
+			return 'yellow';
+		}
+
+		return 'white';
+	}
 
 	return {
-		'background-color': turnOf && !myTurn ? 'yellow' : 'white',
+		'background-color': getBGColor(),
 		border: '1px solid gray',
 		outline: selected ? '3px solid green' : 'none',
 		padding: '10px',
@@ -35,6 +42,7 @@ interface IProps {
 	players: string[];
 	player: string;
 	turnOf: string;
+	winner: string;
 
 	onPlayerSelect(player: string): void;
 	selectedPlayer: string;
@@ -52,10 +60,10 @@ export function Players(props: IProps) {
 	}
 
 	return (
-		<div style={container}>
+		<div style={container(props.winner === props.player)}>
 			<For each={props.players.filter(x => x !== props.player)}>
 				{player => (
-					<div onClick={() => select(player)} style={playerContainer(props.player, player, props.turnOf, props.selectedPlayer)}>
+					<div onClick={() => select(player)} style={playerContainer(props.player, player, props.turnOf, props.selectedPlayer, props.winner)}>
 						{player}
 					</div>
 				)}

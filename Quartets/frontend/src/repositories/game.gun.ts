@@ -6,6 +6,7 @@ import deckGun from './deck.gun';
 import { shamir3pass } from 'shamir3pass';
 import { createRef, defer, gunOn } from '@/utils';
 import { IDeferedObject } from '@/utils/types';
+import { CARDS } from '@/utils/cards';
 
 export enum GameState {
 	READY,
@@ -19,6 +20,7 @@ export interface IGameGun {
 	quartets: Accessor<number[]>;
 	gameState: Accessor<GameState>;
 	playersOrder: Accessor<string[]>;
+	winner: Accessor<string>;
 	start: () => void;
 	draw: () => Promise<number>;
 	request: (from: string, card: number) => Promise<Boolean>;
@@ -40,11 +42,16 @@ function getPlayers(roomGun: any, name: string): Promise<string> {
 	});
 }
 
+function cardToNumber(card: number) {
+	return card % (CARDS.length / 4);
+}
+
 async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Promise<IGameGun> {
 	const { deck, init, off, draw, shuffle } = deckGun(roomId, name);
 
 	const [turn, setTurn] = createSignal(0);
 	const [hand, setHand] = createSignal<number[]>([]);
+	const [winner, setWinner] = createSignal<string>('');
 	const [quartets, setQuartets] = createSignal<number[]>([]);
 	const [gameState, setGameState] = createSignal(GameState.READY);
 	const [playersOrder, setPlayersOrder] = createSignal<string[]>([]);
@@ -67,18 +74,22 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 	const draw4Defer = defer();
 	const drawed: Record<number, boolean> = {};
 
+	function addToHand(card: number) {
+		setHand([...hand(), card].sort((x, y) => cardToNumber(x) - cardToNumber(y)));
+	}
+
 	const offDraw4 = gunOn(roomGun.get('draw'), async (turn: number) => {
 		const myTurn = playersOrder().indexOf(name) === turn % playersOrder().length;
 		const nextTurn = turn + 1;
 
-		if (turn === playersOrder().length * 24) {
+		if (turn === playersOrder().length * 4) {
 			draw4Defer.resolve(null);
 			offDraw4.current?.();
 		} else if (myTurn && !drawed[turn]) {
 			drawed[turn] = true;
 
 			const card = await draw();
-			setHand([...hand(), card].sort((x, y) => (x % 13) - (y % 13)));
+			setHand([...hand(), card].sort((x, y) => cardToNumber(x) - cardToNumber(y)));
 			roomGun.get('draw').put(nextTurn);
 		}
 	});
@@ -104,27 +115,29 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 		requestCardDefer.current?.resolve(data);
 	});
 
-	async function drawCard() {
+	const offWinner = gunOn(roomGun.get('winner'), (data: string) => setWinner(data));
+
+	async function endTurn() {
 		roomGun.get('turn').put(turn() + 1);
 		const newCard = await draw();
-		setHand([...hand(), newCard].sort((x, y) => (x % 13) - (y % 13)));
+		addToHand(newCard);
 
 		return newCard;
 	}
 
 	function handleQuartet() {
-		const quartet = hand().filter(card => hand().filter(c => c % 13 === card % 13).length === 4)[0] % 13;
+		const quartet = cardToNumber(hand().filter(card => hand().filter(c => cardToNumber(c) === cardToNumber(card)).length === 4)[0]);
 
-		if (quartet) {
+		if (quartet >= 0) {
 			setQuartets([...quartets(), quartet]);
 			setHand(
 				hand()
-					.filter(card => card % 13 !== quartet)
-					.sort((x, y) => (x % 13) - (y % 13))
+					.filter(card => cardToNumber(card) !== quartet)
+					.sort((x, y) => cardToNumber(x) - cardToNumber(y))
 			);
 		}
 
-		console.log(quartets());
+		return hand().length === 0;
 	}
 
 	return {
@@ -132,10 +145,11 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 		hand,
 		quartets,
 		turn,
+		winner,
 		roomId,
 		playersOrder,
 		gameState,
-		draw: drawCard,
+		draw: endTurn,
 		async request(from: string, card: number) {
 			if (!from || card < 0) return false;
 
@@ -145,12 +159,16 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 			const res = await requestCardDefer.current;
 
 			if (res) {
-				setHand([...hand(), card].sort((x, y) => (x % 13) - (y % 13)));
+				addToHand(card);
 			} else {
-				await drawCard();
+				await endTurn();
 			}
 
-			handleQuartet();
+			const won = handleQuartet();
+
+			if (won) {
+				roomGun.get('winner').put(name);
+			}
 
 			return res;
 		},
@@ -182,6 +200,7 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 				offDraw4.current?.();
 				offRequestCard.current?.();
 				offResponseCard.current?.();
+				offWinner.current?.();
 
 				roomGun.get('players').put(null);
 				roomGun.get('turn').put(null);
