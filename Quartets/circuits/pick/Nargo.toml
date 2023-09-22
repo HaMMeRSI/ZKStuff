@@ -1,7 +1,7 @@
 [package]
-name = "hello_world"
+name = "quartets_hand_zkproof"
 type = "bin"
-authors = [""]
+authors = ["Sagi Hammer"]
 compiler_version = "0.10.3"
 
 [dependencies]
