@@ -16,6 +16,18 @@ const moduleExclude = match => {
 	};
 };
 
+const wasmContentTypePlugin = {
+	name: 'wasm-content-type-plugin',
+	configureServer(server) {
+		server.middlewares.use((req, res, next) => {
+			if (req.url.endsWith('.wasm')) {
+				res.setHeader('Content-Type', 'application/wasm');
+			}
+			next();
+		});
+	},
+};
+
 export default defineConfig({
 	optimizeDeps: {
 		include: [
@@ -32,6 +44,6 @@ export default defineConfig({
 		],
 	},
 
-	plugins: [solid(), moduleExclude('text-encoding')],
+	plugins: [wasmContentTypePlugin, solid(), moduleExclude('text-encoding')],
 	resolve: { alias: { '@': resolve(__dirname, './src') } },
 });
