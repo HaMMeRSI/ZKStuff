@@ -3,19 +3,19 @@ import { shamir3pass, Key } from 'shamir3pass';
 const PrimeBitLength = 8;
 
 const encryption = shamir3pass();
-function toHex(str: string) {
-	return str.split('').map(char => char.charCodeAt(0).toString(16));
-}
-const hexToString = (hex: string) => {
-	let str = '';
-	for (let i = 0; i < hex.length; i += 2) {
-		const hexValue = hex.substring(i, i + 2);
-		const decimalValue = parseInt(hexValue, 16);
-		str += String.fromCharCode(decimalValue);
-	}
+// function toHex(str: string) {
+// 	return str.split('').map(char => char.charCodeAt(0).toString(16));
+// }
+// const hexToString = (hex: string) => {
+// 	let str = '';
+// 	for (let i = 0; i < hex.length; i += 2) {
+// 		const hexValue = hex.substring(i, i + 2);
+// 		const decimalValue = parseInt(hexValue, 16);
+// 		str += String.fromCharCode(decimalValue);
+// 	}
     
-	return str;
-};
+// 	return str;
+// };
 const deck = Array.from(new Array(52), (_, i) => BigInt(i));
 
 function eachLock(deck: BigInt[], prime: BigInt) {
