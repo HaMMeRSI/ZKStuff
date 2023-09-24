@@ -96,16 +96,15 @@ export function padArray(arr: any[], number: number, value: any = 0) {
 	return arr;
 }
 
-export function toHex64_0(x: number) {
+export function toHex64_0(x: number | bigint) {
 	return `0x${x.toString(16).padStart(64, '0')}`;
 }
 
-export function getInitialWitness<G extends string>(paramWitnesses: Record<G, number[]>, input: Record<G, number | number[]>) {
+export function getInitialWitness<G extends string>(paramWitnesses: Record<G, number[]>, input: Record<G, number | number[] | bigint | bigint[]>) {
 	const entries = Object.entries<number[]>(paramWitnesses).flatMap(([key, indices]) => {
 		return indices.map((v, i) => {
 			let witness = input[key as G];
-
-			if (typeof witness !== 'number') {
+			if (typeof witness === 'object') {
 				witness = witness[i];
 			}
 

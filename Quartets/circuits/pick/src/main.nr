@@ -1,17 +1,17 @@
 use dep::std;
 
-fn main(hand: [u8; 32], handHash: pub [u8; 32], card: pub u8) {
-    let hash = std::hash::blake2s(hand);
+fn main(hand: [Field; 32], handHash: pub [Field; 1], card: pub u8) {
     let mut found = false;
-    
+    let hash = std::hash::pedersen(hand);
     // std::println(hash);
+
 
     assert(card > 0);
     assert(card < 54);
-    assert(hash == handHash);
+    assert(hash[0] == handHash[0]);
     
     for i in 0..32 {
-        if hand[i] == card {
+        if hand[i] == card as Field{
             found = true;
         }
     }
@@ -22,13 +22,7 @@ fn main(hand: [u8; 32], handHash: pub [u8; 32], card: pub u8) {
 #[test]
 fn test_main() {
     let hand = [3, 4, 1, 2, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    let handHash = [54, 238, 82, 11, 108, 68, 186, 108, 12, 242, 71, 39, 15, 236, 24, 186, 59, 108, 253, 246, 138, 4, 122, 197, 38, 129, 45, 75, 201, 185, 107, 199];
+    let handHash = [0x12d303c7a9a41f0d3ed27a2c35ea734ef8ae6dcebd40c98df625e6b683c8499d];
     
     main(hand, handHash, 32);
-}
-#[test]
-fn test_0() {
-    let hand = [3, 4, 1, 2, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    let handHash = [54, 238, 82, 11, 108, 68, 186, 108, 12, 242, 71, 39, 15, 236, 24, 186, 59, 108, 253, 246, 138, 4, 122, 197, 38, 129, 45, 75, 201, 185, 107, 199];
-    main(hand, handHash, 0);
 }

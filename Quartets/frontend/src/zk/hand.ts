@@ -2,7 +2,6 @@ import { Noir } from './noir';
 import { getInitialWitness, padArray } from '@/utils';
 import circuit from './quartets_hand_zkproof.json';
 import { decompressSync, compressSync } from 'fflate';
-import { blake2s } from '@noble/hashes/blake2s';
 
 type ParamWitness = keyof typeof circuit.abi.param_witnesses;
 
@@ -17,7 +16,7 @@ export async function handNoir() {
 
 			const input: Record<ParamWitness, any> = {
 				hand,
-				handHash: blake2s(Uint8Array.from(hand)),
+				handHash: (await noir.pedersenHash(hand)).value,
 				card: card + 1,
 			};
 
