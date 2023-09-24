@@ -165,9 +165,7 @@ function deckGun(roomId: string, player: string): IDecksGun {
 		async draw() {
 			drawDefer.current = defer();
 			drawRequestGun.put(JSON.stringify({ type: 'draw', requestedBy: player, drawCount: drawCount + 1, publicRsa }));
-			const res = await drawDefer.current;
-
-			return res;
+			return drawDefer.current;
 		},
 		off() {
 			drawRequestOff.current?.();

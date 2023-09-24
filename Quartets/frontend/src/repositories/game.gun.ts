@@ -7,15 +7,25 @@ import { shamir3pass } from 'shamir3pass';
 import { createRef, defer, gunOn } from '@/utils';
 import { IDeferedObject } from '@/utils/types';
 import { CARDS } from '@/utils/cards';
+import { handNoir } from '@/zk/hand';
 
 export enum GameState {
 	READY,
 	GAME_STARTED,
 }
 
+export enum ZKStatus {
+	READY = 'ready',
+	PROOF_GEN = 'generating proof',
+	PROOF_WAIT = 'waiting for proof',
+	PROOF_VERIFY = 'verifying proof',
+	PROOF_FAILED = 'proof failed',
+}
+
 export interface IGameGun {
 	roomId: string;
 	deck?: Accessor<BigInt[]>;
+	zkStatus: Accessor<ZKStatus>;
 	hand: Accessor<number[]>;
 	quartets: Accessor<number[]>;
 	gameState: Accessor<GameState>;
@@ -49,6 +59,7 @@ function cardToNumber(card: number) {
 async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Promise<IGameGun> {
 	const { deck, init, off, draw, shuffle } = deckGun(roomId, name);
 
+	const [zkStatus, setZkStatus] = createSignal(ZKStatus.READY);
 	const [turn, setTurn] = createSignal(0);
 	const [hand, setHand] = createSignal<number[]>([]);
 	const [winner, setWinner] = createSignal<string>('');
@@ -58,6 +69,7 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 
 	const roomGun = gun.get(APP).get(ROOMS).get(roomId);
 	const atEnterPlayers = await getPlayers(roomGun, name);
+	const noir = await handNoir();
 
 	const offPlayers = gunOn(roomGun.get('players'), (data: string) => setPlayersOrder(data?.split(',') ?? []));
 	const offState = gunOn(roomGun.get('gameState'), (data: GameState) => setGameState(data));
@@ -73,6 +85,8 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 	const requestCardDefer = createRef<IDeferedObject<Boolean>>();
 	const draw4Defer = defer();
 	const drawed: Record<number, boolean> = {};
+	let oldRequest = '';
+	let oldResponse = '';
 
 	function addToHand(card: number) {
 		setHand([...hand(), card].sort((x, y) => cardToNumber(x) - cardToNumber(y)));
@@ -95,24 +109,48 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 	});
 
 	const offRequestCard = gunOn(roomGun.get('request').get('card'), async (data: string) => {
-		if (!data) return;
+		if (!data || data === oldRequest) return;
+		oldRequest = data;
 
 		const [from, reqCard] = data.split('|');
 		const card = +reqCard;
 
 		if (name === from) {
 			const includes = hand().includes(card);
+			roomGun.get('request').get('card').put(null);
+
 			if (includes) {
 				setHand(hand().filter(val => val !== card));
+				roomGun.get('response').get('card').put('1');
+			} else {
+				setZkStatus(ZKStatus.PROOF_GEN);
+				const proof = await noir.proof(hand(), card);
+				setZkStatus(ZKStatus.READY);
+				roomGun.get('response').get('card').put(proof);
 			}
-
-			roomGun.get('request').get('card').put(null);
-			roomGun.get('response').get('card').put(includes);
 		}
 	});
 
-	const offResponseCard = gunOn(roomGun.get('response').get('card'), (data: Boolean) => {
-		requestCardDefer.current?.resolve(data);
+	const offResponseCard = gunOn(roomGun.get('response').get('card'), async (data: string) => {
+		if (!data || data === oldResponse) return;
+		oldResponse = data;
+
+		if (data === '1') {
+			requestCardDefer.current?.resolve(true);
+		} else {
+			setZkStatus(ZKStatus.PROOF_VERIFY);
+
+			noir.verify(data)
+				.then(() => {
+					console.log('ok');
+					setZkStatus(ZKStatus.READY);
+					requestCardDefer.current?.resolve(false);
+				})
+				.catch(() => {
+					setZkStatus(ZKStatus.PROOF_FAILED);
+					console.log('CHEATER!!!!');
+				});
+		}
 	});
 
 	const offWinner = gunOn(roomGun.get('winner'), (data: string) => setWinner(data));
@@ -142,6 +180,7 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 
 	return {
 		deck,
+		zkStatus,
 		hand,
 		quartets,
 		turn,
@@ -156,7 +195,9 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 			requestCardDefer.current = defer<Boolean>();
 			roomGun.get('request').get('card').put(`${from}|${card}`);
 
+			setZkStatus(ZKStatus.PROOF_WAIT);
 			const res = await requestCardDefer.current;
+			setZkStatus(ZKStatus.READY);
 
 			if (res) {
 				addToHand(card);

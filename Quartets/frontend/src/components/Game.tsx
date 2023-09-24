@@ -1,4 +1,4 @@
-import { GameState, IGameGun } from '@/repositories/game.gun';
+import { GameState, IGameGun, ZKStatus } from '@/repositories/game.gun';
 import { JSX, Show, createEffect, createSignal } from 'solid-js';
 import { Players } from './Players';
 import { Deck } from './Deck';
@@ -24,6 +24,7 @@ export function Game(props: IProps) {
 	const leftDeck = () => CARDS.map((_, i) => (!props.room.hand().includes(i) ? i : -1)).filter(x => x !== -1);
 
 	const gameState = props.room.gameState;
+	const zkStatus = props.room.zkStatus;
 	const players = props.room.playersOrder;
 	const winner = props.room.winner;
 
@@ -53,8 +54,10 @@ export function Game(props: IProps) {
 					<button onClick={() => props.room.start()}>Start Game</button>
 				</Show>
 				<Show when={gameState() === GameState.GAME_STARTED}>
-					<button disabled={!myTurn() || !!winner()} onClick={() => props.room.request(requestedFrom(), requestedCard())}>
-						Request
+					<button
+						disabled={!myTurn() || !!winner() || zkStatus() !== ZKStatus.READY}
+						onClick={() => props.room.request(requestedFrom(), requestedCard())}>
+						{zkStatus() === ZKStatus.READY ? 'Request' : zkStatus()}
 					</button>
 				</Show>
 			</div>

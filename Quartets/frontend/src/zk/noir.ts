@@ -1,13 +1,13 @@
-import { decompressSync } from 'fflate';
-import { executeCircuit, compressWitness } from '@noir-lang/acvm_js';
-import circuit from './noirstarter.json';
 import { Buffer } from 'buffer';
-import acvmJsBgWasmInput from '@noir-lang/acvm_js/web/acvm_js_bg.wasm?url';
+import { decompressSync } from 'fflate';
 import type { Barretenberg } from '@aztec/bb.js';
 
-export async function Noir() {
+import acvmJsBgWasmInput from '@noir-lang/acvm_js/web/acvm_js_bg.wasm?url';
+import circuit from './quartets_hand_zkproof.json';
+
+export async function Noir(debug: boolean = false) {
 	const { Barretenberg, RawBuffer, Crs } = await import('@aztec/bb.js');
-	const { default: initACVM } = await import('@noir-lang/acvm_js');
+	const { default: initACVM, executeCircuit, compressWitness } = await import('@noir-lang/acvm_js');
 
 	const acirBuffer: Uint8Array = Buffer.from(circuit.bytecode, 'base64');
 	const acirBufferUncompressed: Uint8Array = decompressSync(acirBuffer);
@@ -23,36 +23,31 @@ export async function Noir() {
 	await api.commonInitSlabAllocator(subgroupSize);
 	await api.srsInitSrs(new RawBuffer(crs.getG1Data()), crs.numPoints, new RawBuffer(crs.getG2Data()));
 
-	async function generateWitness(input: any): Promise<Uint8Array> {
-		const initialWitness = new Map<number, string>();
-
-		initialWitness.set(1, `0x${input.x.toString(16).padStart(64, '0')}`);
-		initialWitness.set(2, `0x${input.y.toString(16).padStart(64, '0')}`);
-
+	async function generateWitness(initialWitness: Map<number, string>): Promise<Uint8Array> {
 		const witnessMap = await executeCircuit(acirBuffer, initialWitness, () => {
 			throw Error('unexpected oracle');
 		});
 
 		const witnessBuff = compressWitness(witnessMap);
-		console.log('witnessBuff: ', witnessBuff);
+		if (debug) console.log('witnessBuff: ', witnessBuff);
 		return witnessBuff;
 	}
 
 	async function generateProof(witness: Uint8Array) {
 		const proof = await api.acirCreateProof(acirComposer, acirBufferUncompressed, decompressSync(witness), false);
-		console.log('proof: ', proof);
+		if (debug) console.log('proof: ', proof);
 		return proof;
 	}
 
 	async function verifyProof(proof: Uint8Array) {
 		await api.acirInitProvingKey(acirComposer, acirBufferUncompressed);
 		const verified = await api.acirVerifyProof(acirComposer, proof, false);
-		console.log('verified: ', verified);
+		if (debug) console.log('verified: ', verified);
 		return verified;
 	}
 
-	async function destroy() {
-		await api.destroy();
+	function destroy() {
+		return api.destroy();
 	}
 
 	return {

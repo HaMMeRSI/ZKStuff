@@ -84,3 +84,34 @@ export function gunOn<T>(chain: any, fn: (data: T, key: any, _: any, ev: any) =>
 
 	return ev;
 }
+
+export function padArray(arr: any[], number: number, value: any = 0) {
+	if (arr.length >= number) {
+		return arr;
+	}
+
+	const values = new Array(number - arr.length).fill(value);
+	arr.push.apply(arr, values);
+
+	return arr;
+}
+
+export function toHex64_0(x: number) {
+	return `0x${x.toString(16).padStart(64, '0')}`;
+}
+
+export function getInitialWitness<G extends string>(paramWitnesses: Record<G, number[]>, input: Record<G, number | number[]>) {
+	const entries = Object.entries<number[]>(paramWitnesses).flatMap(([key, indices]) => {
+		return indices.map((v, i) => {
+			let witness = input[key as G];
+
+			if (typeof witness !== 'number') {
+				witness = witness[i];
+			}
+
+			return [v, toHex64_0(witness)] as const;
+		});
+	});
+
+	return new Map<number, string>(entries);
+}
