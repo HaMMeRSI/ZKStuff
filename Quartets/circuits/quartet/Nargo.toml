@@ -1,5 +1,5 @@
 [package]
-name = "pick_hand_zkproof"
+name = "quartets_hand_zkproof"
 type = "bin"
 authors = ["Sagi Hammer"]
 compiler_version = "0.10.3"

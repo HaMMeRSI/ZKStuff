@@ -3,7 +3,7 @@ const SPADE = '♠';
 const CLUB = '♣';
 const HEART = '♥';
 
-export const CARDS = [
+export const CARDS1 = [
 	'A' + DIAMOND,
 	'2' + DIAMOND,
 	'3' + DIAMOND,
@@ -57,20 +57,20 @@ export const CARDS = [
 	'Q' + HEART,
 	'K' + HEART,
 ];
-// export const CARDS = [
-// 	'A' + DIAMOND,
-// 	'2' + DIAMOND,
-// 	'3' + DIAMOND,
+export const CARDS = [
+	'A' + DIAMOND,
+	'2' + DIAMOND,
+	'3' + DIAMOND,
 
-// 	'A' + SPADE,
-// 	'2' + SPADE,
-// 	'3' + SPADE,
+	'A' + SPADE,
+	'2' + SPADE,
+	'3' + SPADE,
 
-// 	'A' + CLUB,
-// 	'2' + CLUB,
-// 	'3' + CLUB,
+	'A' + CLUB,
+	'2' + CLUB,
+	'3' + CLUB,
 
-// 	'A' + HEART,
-// 	'2' + HEART,
-// 	'3' + HEART,
-// ];
+	'A' + HEART,
+	'2' + HEART,
+	'3' + HEART,
+];

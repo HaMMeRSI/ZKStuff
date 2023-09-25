@@ -3,12 +3,11 @@ import { decompressSync } from 'fflate';
 import type { Barretenberg } from '@aztec/bb.js';
 import { acvm } from '@noir-lang/noir_js';
 import acvmJsBgWasmInput from '@noir-lang/acvm_js/web/acvm_js_bg.wasm?url';
-import circuit from './quartets_hand_zkproof.json';
 import { Fr } from './fields';
 
-export async function Noir(debug: boolean = false) {
+export async function Noir(byteCode: string, debug: boolean = false) {
 	const { Barretenberg, RawBuffer, Crs } = await import('@aztec/bb.js');
-	const acirBuffer: Uint8Array = Buffer.from(circuit.bytecode, 'base64');
+	const acirBuffer: Uint8Array = Buffer.from(byteCode, 'base64');
 	const acirBufferUncompressed: Uint8Array = decompressSync(acirBuffer);
 	const api: Barretenberg = await Barretenberg.new(4);
 

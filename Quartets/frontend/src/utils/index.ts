@@ -85,7 +85,7 @@ export function gunOn<T>(chain: any, fn: (data: T, key: any, _: any, ev: any) =>
 	return ev;
 }
 
-export function padArray(arr: any[], number: number, value: any = 0) {
+export function padArray<T>(arr: T[], number: number, value: T) {
 	if (arr.length >= number) {
 		return arr;
 	}

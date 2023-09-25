@@ -7,7 +7,10 @@ import { shamir3pass } from 'shamir3pass';
 import { createRef, defer, gunOn } from '@/utils';
 import { IDeferedObject } from '@/utils/types';
 import { CARDS } from '@/utils/cards';
-import { handNoir } from '@/zk/hand';
+import { pickNoirInit } from '@/zk/pickNoirInit';
+import { quartetNoirInit } from '@/zk/quartetNoirInit';
+import { wonNoirInit } from '@/zk/wonNoirInit';
+import { nanoid } from 'nanoid';
 
 export enum GameState {
 	READY,
@@ -69,7 +72,7 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 
 	const roomGun = gun.get(APP).get(ROOMS).get(roomId);
 	const atEnterPlayers = await getPlayers(roomGun, name);
-	const noir = await handNoir();
+	const [pickNoir, quartetNoir, wonNoir] = await Promise.all([pickNoirInit(), quartetNoirInit(), wonNoirInit()]);
 
 	const offPlayers = gunOn(roomGun.get('players'), (data: string) => setPlayersOrder(data?.split(',') ?? []));
 	const offState = gunOn(roomGun.get('gameState'), (data: GameState) => setGameState(data));
@@ -85,8 +88,10 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 	const requestCardDefer = createRef<IDeferedObject<Boolean>>();
 	const draw4Defer = defer();
 	const drawed: Record<number, boolean> = {};
+
 	let oldRequest = '';
 	let oldResponse = '';
+	let oldWinner = '';
 
 	function addToHand(card: number) {
 		setHand([...hand(), card].sort((x, y) => cardToNumber(x) - cardToNumber(y)));
@@ -121,12 +126,18 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 
 			if (includes) {
 				setHand(hand().filter(val => val !== card));
-				roomGun.get('response').get('card').put('1');
+				roomGun
+					.get('response')
+					.get('card')
+					.put('1|' + nanoid(4));
 			} else {
 				setZkStatus(ZKStatus.PROOF_GEN);
-				const proof = await noir.proof(hand(), card);
+				const proof = await pickNoir.proof(hand(), card);
 				setZkStatus(ZKStatus.READY);
-				roomGun.get('response').get('card').put(proof);
+				roomGun
+					.get('response')
+					.get('card')
+					.put(`${proof}|${nanoid(4)}}`);
 			}
 		}
 	});
@@ -134,48 +145,84 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 	const offResponseCard = gunOn(roomGun.get('response').get('card'), async (data: string) => {
 		if (!data || data === oldResponse) return;
 		oldResponse = data;
+		const [proofStr] = data.split('|');
 
-		if (data === '1') {
+		if (proofStr === '1') {
 			requestCardDefer.current?.resolve(true);
 		} else {
 			setZkStatus(ZKStatus.PROOF_VERIFY);
 
-			noir.verify(data)
+			pickNoir
+				.verify(proofStr)
 				.then(() => {
-					console.log('ok');
+					console.log('ok draw');
 					setZkStatus(ZKStatus.READY);
 					requestCardDefer.current?.resolve(false);
 				})
 				.catch(() => {
 					setZkStatus(ZKStatus.PROOF_FAILED);
-					console.log('CHEATER!!!!');
+					console.log('CHEATER DRAW!!!!');
 				});
 		}
 	});
 
-	const offWinner = gunOn(roomGun.get('winner'), (data: string) => setWinner(data));
+	const offWinner = gunOn(roomGun.get('winner'), async (data: string) => {
+		if (!data || oldWinner === data) return;
+		oldWinner = data;
+
+		const [winner, proof] = data.split('|');
+
+		setZkStatus(ZKStatus.PROOF_VERIFY);
+
+		await wonNoir
+			.verify(proof)
+			.then(() => {
+				console.log('ok won');
+				setZkStatus(ZKStatus.READY);
+			})
+			.catch(() => {
+				setZkStatus(ZKStatus.PROOF_FAILED);
+				console.log('CHEATER WON!!!!');
+			});
+
+		setWinner(winner);
+	});
 
 	async function endTurn() {
-		roomGun.get('turn').put(turn() + 1);
-		const newCard = await draw();
-		addToHand(newCard);
+		const nextTurn = turn() + 1;
+		roomGun.get('turn').put(nextTurn);
 
-		return newCard;
+		if (nextTurn < CARDS.length) {
+			const newCard = await draw();
+			addToHand(newCard);
+			return newCard;
+		}
+
+		return -1;
 	}
 
-	function handleQuartet() {
+	async function handleQuartet() {
 		const quartet = cardToNumber(hand().filter(card => hand().filter(c => cardToNumber(c) === cardToNumber(card)).length === 4)[0]);
 
 		if (quartet >= 0) {
+			const postHand = hand()
+				.filter(card => cardToNumber(card) !== quartet)
+				.sort((x, y) => cardToNumber(x) - cardToNumber(y));
+
+			const won = postHand.length === 0;
+
+			setZkStatus(ZKStatus.PROOF_GEN);
+			const proofGen = won ? wonNoir.proof : quartetNoir.proof;
+			const proof = await proofGen(hand(), quartet);
+			setZkStatus(ZKStatus.READY);
+
 			setQuartets([...quartets(), quartet]);
-			setHand(
-				hand()
-					.filter(card => cardToNumber(card) !== quartet)
-					.sort((x, y) => cardToNumber(x) - cardToNumber(y))
-			);
+			setHand(postHand);
+
+			return [won, proof];
 		}
 
-		return hand().length === 0;
+		return [false];
 	}
 
 	return {
@@ -193,22 +240,20 @@ async function gameGun(roomId: string, name: string, onLeave: VoidFunction): Pro
 			if (!from || card < 0) return false;
 
 			requestCardDefer.current = defer<Boolean>();
-			roomGun.get('request').get('card').put(`${from}|${card}`);
+			roomGun
+				.get('request')
+				.get('card')
+				.put(`${from}|${card}|${nanoid(4)}`);
 
 			setZkStatus(ZKStatus.PROOF_WAIT);
 			const res = await requestCardDefer.current;
 			setZkStatus(ZKStatus.READY);
 
-			if (res) {
-				addToHand(card);
-			} else {
-				await endTurn();
-			}
-
-			const won = handleQuartet();
+			res ? addToHand(card) : await endTurn();
+			const [won, proof] = await handleQuartet();
 
 			if (won) {
-				roomGun.get('winner').put(name);
+				roomGun.get('winner').put([name, proof, nanoid(4)].join('|'));
 			}
 
 			return res;

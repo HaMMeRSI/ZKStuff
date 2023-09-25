@@ -1,23 +1,25 @@
 import { Noir } from './noir';
 import { getInitialWitness, padArray } from '@/utils';
-import circuit from './quartets_hand_zkproof.json';
 import { decompressSync, compressSync } from 'fflate';
+import circuit from './target/quartets_hand_zkproof.json';
+import { CARDS } from '@/utils/cards';
 
 type ParamWitness = keyof typeof circuit.abi.param_witnesses;
 
-export async function handNoir() {
-	const noir = await Noir();
-
+export async function quartetNoirInit() {
+	const noir = await Noir(circuit.bytecode);
+	
 	return {
 		destroy: noir.destroy,
 		async proof(hand: number[], card: number) {
 			hand = hand.map(h => h + 1);
-			hand = padArray(hand, 32);
+			hand = padArray(hand, 32, 0);
 
 			const input: Record<ParamWitness, any> = {
 				hand,
 				handHash: (await noir.pedersenHash(hand)).value,
 				card: card + 1,
+				cardsPerSymbol: CARDS.length / 4,
 			};
 
 			const initialWitness = getInitialWitness(circuit.abi.param_witnesses, input);
