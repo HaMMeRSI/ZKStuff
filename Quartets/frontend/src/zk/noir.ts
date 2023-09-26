@@ -2,9 +2,10 @@ import { Buffer } from 'buffer';
 import { decompressSync } from 'fflate';
 import type { Barretenberg } from '@aztec/bb.js';
 import { acvm } from '@noir-lang/noir_js';
-import acvmJsBgWasmInput from '@noir-lang/acvm_js/web/acvm_js_bg.wasm?url';
 import { Fr } from './fields';
 import { bytesToNumber } from '@/utils';
+
+import acvmJsBgWasmInput from '@noir-lang/acvm_js/web/acvm_js_bg.wasm?url';
 
 interface IZKProof {
 	backend: string;
@@ -44,13 +45,16 @@ export async function Noir(zkProof: IZKProof, debug: boolean = false) {
 	}
 
 	async function generateProof(witness: Uint8Array) {
-		const proof = await api.acirCreateProof(acirComposer, acirBufferUncompressed, decompressSync(witness), false);
+		const proof = await api.acirCreateProof(acirComposer, acirBufferUncompressed, decompressSync(witness), false).catch(e => {
+			console.error(e);
+			throw e;
+		});
+
 		if (debug) console.log('proof: ', proof);
 		return proof;
 	}
 
 	function extractProofPublicParams(proof: Uint8Array) {
-		const bytesToNumber = (byteArray: Uint8Array) => byteArray.reduce((a, b) => a * 256n + BigInt(b), 0n);
 		const accessMap = Object.fromEntries(zkProof.abi.parameters.map(p => [p.name, p.visibility === 'public']));
 
 		const publicParamsWitnesses = Object.entries(zkProof.abi.param_witnesses).filter(([key]) => accessMap[key]);
@@ -62,8 +66,16 @@ export async function Noir(zkProof: IZKProof, debug: boolean = false) {
 	}
 
 	async function verifyProof(proof: Uint8Array) {
-		await api.acirInitProvingKey(acirComposer, acirBufferUncompressed);
-		const verified = await api.acirVerifyProof(acirComposer, proof, false);
+		await api.acirInitProvingKey(acirComposer, acirBufferUncompressed).catch(e => {
+			console.error(e);
+			throw e;
+		});
+
+		const verified = await api.acirVerifyProof(acirComposer, proof, false).catch(e => {
+			console.error(e);
+			throw e;
+		});
+
 		if (debug) console.log('verified: ', verified);
 		return [verified, extractProofPublicParams(proof)] as const;
 	}

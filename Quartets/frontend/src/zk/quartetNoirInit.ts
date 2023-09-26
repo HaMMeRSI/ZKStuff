@@ -10,7 +10,7 @@ export async function quartetNoirInit() {
 	const noir = await Noir(circuit);
 
 	return {
-		destroy: noir.destroy,
+		noir,
 		async proof(hand: number[], card: number) {
 			hand = hand.map(h => h + 1);
 			hand = padArray(hand, 32, 0);

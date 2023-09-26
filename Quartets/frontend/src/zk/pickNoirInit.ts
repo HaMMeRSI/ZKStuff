@@ -1,8 +1,8 @@
 import { Noir } from './noir';
 import { getInitialWitness, padArray } from '@/utils';
 import { decompressSync, compressSync } from 'fflate';
-import circuit from './target/pick_hand_zkproof.json';
 import { CARDS } from '@/utils/cards';
+import circuit from './target/pick_hand_zkproof.json';
 
 type ParamWitness = keyof typeof circuit.abi.param_witnesses;
 
@@ -10,7 +10,7 @@ export async function pickNoirInit() {
 	const noir = await Noir(circuit);
 
 	return {
-		destroy: noir.destroy,
+		noir,
 		async proof(hand: number[], card: number) {
 			hand = hand.map(h => h + 1);
 			hand = padArray(hand, 32, 0);
@@ -27,8 +27,13 @@ export async function pickNoirInit() {
 			const proof = await noir.generateProof(witness);
 			return compressSync(proof).join(',');
 		},
-		verify(proofStr: string) {
+		verify(proofStr: string, _handHash: bigint) {
 			const proof = decompressSync(Uint8Array.from(proofStr.split(',').map(Number)));
+			const { handHash } = noir.extractProofPublicParams(proof);
+			if (handHash[0] !== _handHash) {
+				throw new Error('handHash does not match');
+			}
+			
 			return noir.verifyProof(proof);
 		},
 	};
