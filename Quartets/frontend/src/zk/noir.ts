@@ -4,10 +4,22 @@ import type { Barretenberg } from '@aztec/bb.js';
 import { acvm } from '@noir-lang/noir_js';
 import acvmJsBgWasmInput from '@noir-lang/acvm_js/web/acvm_js_bg.wasm?url';
 import { Fr } from './fields';
+import { bytesToNumber } from '@/utils';
 
-export async function Noir(byteCode: string, debug: boolean = false) {
+interface IZKProof {
+	backend: string;
+	abi: {
+		parameters: any[];
+		param_witnesses: Record<string, number[]>;
+		return_type: any;
+		return_witnesses: any;
+	};
+	bytecode: string;
+}
+
+export async function Noir(zkProof: IZKProof, debug: boolean = false) {
 	const { Barretenberg, RawBuffer, Crs } = await import('@aztec/bb.js');
-	const acirBuffer: Uint8Array = Buffer.from(byteCode, 'base64');
+	const acirBuffer: Uint8Array = Buffer.from(zkProof.bytecode, 'base64');
 	const acirBufferUncompressed: Uint8Array = decompressSync(acirBuffer);
 	const api: Barretenberg = await Barretenberg.new(4);
 
@@ -37,11 +49,23 @@ export async function Noir(byteCode: string, debug: boolean = false) {
 		return proof;
 	}
 
+	function extractProofPublicParams(proof: Uint8Array) {
+		const bytesToNumber = (byteArray: Uint8Array) => byteArray.reduce((a, b) => a * 256n + BigInt(b), 0n);
+		const accessMap = Object.fromEntries(zkProof.abi.parameters.map(p => [p.name, p.visibility === 'public']));
+
+		const publicParamsWitnesses = Object.entries(zkProof.abi.param_witnesses).filter(([key]) => accessMap[key]);
+
+		const minWitnessIndex = Math.min(...publicParamsWitnesses.flatMap(([, value]) => value));
+		const adjustedWitnesses = publicParamsWitnesses.map(([key, value]) => [key, value.map((v: number) => v - minWitnessIndex)] as const);
+
+		return Object.fromEntries(adjustedWitnesses.map(([key, value]) => [key, value.flatMap(i => bytesToNumber(proof.slice(i * 32, (i + 1) * 32)))]));
+	}
+
 	async function verifyProof(proof: Uint8Array) {
 		await api.acirInitProvingKey(acirComposer, acirBufferUncompressed);
 		const verified = await api.acirVerifyProof(acirComposer, proof, false);
 		if (debug) console.log('verified: ', verified);
-		return verified;
+		return [verified, extractProofPublicParams(proof)] as const;
 	}
 
 	async function pedersenHash(hand: number[]) {
@@ -53,6 +77,7 @@ export async function Noir(byteCode: string, debug: boolean = false) {
 	}
 
 	return {
+		extractProofPublicParams,
 		generateWitness,
 		generateProof,
 		pedersenHash,

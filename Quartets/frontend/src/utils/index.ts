@@ -114,3 +114,7 @@ export function getInitialWitness<G extends string>(paramWitnesses: Record<G, nu
 
 	return new Map<number, string>(entries);
 }
+
+export function bytesToNumber(byteArray: Uint8Array) {
+	return byteArray.reduce((a, b) => a * 256n + BigInt(b), 0n);
+}

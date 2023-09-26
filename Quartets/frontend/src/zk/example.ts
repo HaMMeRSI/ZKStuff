@@ -26,7 +26,7 @@ let hand = [1, 4, 7, 10];
 hand = hand.map(card => card + 0);
 hand = padArray(hand, 32, 0);
 export async function zkQuartetsExample() {
-	const noir = await Noir(circuit.bytecode);
+	const noir = await Noir(circuit);
 
 	return execute(noir, {
 		hand,

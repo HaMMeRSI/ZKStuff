@@ -7,8 +7,8 @@ import { CARDS } from '@/utils/cards';
 type ParamWitness = keyof typeof circuit.abi.param_witnesses;
 
 export async function quartetNoirInit() {
-	const noir = await Noir(circuit.bytecode);
-	
+	const noir = await Noir(circuit);
+
 	return {
 		destroy: noir.destroy,
 		async proof(hand: number[], card: number) {
@@ -27,9 +27,9 @@ export async function quartetNoirInit() {
 			const proof = await noir.generateProof(witness);
 			return compressSync(proof).join(',');
 		},
-		async verify(proofStr: string) {
+		verify(proofStr: string) {
 			const proof = decompressSync(Uint8Array.from(proofStr.split(',').map(Number)));
-			return await noir.verifyProof(proof);
+			return noir.verifyProof(proof);
 		},
 	};
 }
