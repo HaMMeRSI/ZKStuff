@@ -30,10 +30,6 @@ export function Game(props: IProps) {
 	const players = props.room.playersOrder;
 	const winner = props.room.winner;
 
-	createEffect(() => {
-		console.log(zkStatus());
-	});
-
 	const [requestedCard, setRequestedCard] = createSignal(-1);
 	const [requestedFrom, setRequestedFrom] = createSignal<string>('');
 
@@ -56,12 +52,15 @@ export function Game(props: IProps) {
 			/>
 			<div style={contolsContainer}>
 				<button onClick={() => props.leaveRoom()}>Leave Room</button>
-				<Show when={players().length > 1 && gameState() < GameState.GAME_STARTED}>
+				<Show when={players().length > 1 && gameState() < GameState.DEALING}>
 					<button onClick={() => props.room.start()}>Start Game</button>
 				</Show>
-				<Show when={gameState() === GameState.GAME_STARTED}>
+				<Show when={gameState() === GameState.DEALING}>
+					<button disabled>{zkStatus() === ZKStatus.READY ? 'Dealing..' : zkStatus()}</button>
+				</Show>
+				<Show when={gameState() >= GameState.GAME_STARTED}>
 					<button
-						disabled={!myTurn() || !!winner() || zkStatus() !== ZKStatus.READY}
+						disabled={!myTurn() || !!winner() || gameState() !== GameState.GAME_STARTED || zkStatus() !== ZKStatus.READY}
 						onClick={() => props.room.request(requestedFrom(), requestedCard())}>
 						{zkStatus() === ZKStatus.READY ? 'Request' : zkStatus()}
 					</button>

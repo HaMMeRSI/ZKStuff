@@ -96,6 +96,7 @@ function deckGun(roomId: string, player: string): IDecksGun {
 				console.log('ENCRYPTED', turn);
 				const decryptedDeck = deck.map(card => decrypt(card, key!));
 				const eachEncryptedDeck = decryptedDeck.map((card, i) => encrypt(card, keyFromString(eachKey![i])));
+
 				setDeck(eachEncryptedDeck);
 
 				deckGun.put(`${nextTurn}|` + eachEncryptedDeck.join());
@@ -130,9 +131,9 @@ function deckGun(roomId: string, player: string): IDecksGun {
 	const keysoff = gunOn(keysGun, async (data: Record<string, any>, _key: any) => {
 		const { _, ...encodedKeys } = data;
 		const ok = Object.values(encodedKeys).filter(Boolean).length === playerOrder?.length && requestedBy === player;
-		const decoder = new TextDecoder();
 
 		if (ok) {
+			const decoder = new TextDecoder();
 			requestedBy = '';
 
 			function decode(str: string) {
@@ -147,7 +148,6 @@ function deckGun(roomId: string, player: string): IDecksGun {
 
 			const card = deck()[drawCount];
 			const decrypted = decryptedKeys.reduce((acc, val) => decrypt(acc, val), card);
-			console.log('enc card ', card, ' keys: ', decryptedKeys, ' card', decrypted);
 			const nulled = Object.fromEntries(Object.entries(encodedKeys).map(([key]) => [key, null]));
 
 			drawRequestGun.put(null);

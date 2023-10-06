@@ -11,6 +11,7 @@ import { nanoid } from 'nanoid';
 
 export enum GameState {
 	READY,
+	DEALING,
 	GAME_STARTED,
 	WON,
 }
@@ -112,8 +113,13 @@ async function gameGun(gameId: string, name: string, onLeave: VoidFunction, noir
 		const [turn, encryptedCard, handHash, proof] = data.split('|');
 		if (+turn > 0) {
 			setZkStatus(ZKStatus.PROOF_VERIFY);
-			await drawNoir.verify(proof, BigInt(handHash), BigInt(encryptedCard), prime).catch(_e => setZkStatus(ZKStatus.PROOF_FAILED));
-			setZkStatus(ZKStatus.READY);
+			await drawNoir
+				.verify(proof, BigInt(handHash), BigInt(encryptedCard), prime)
+				.then(() => setZkStatus(ZKStatus.READY))
+				.catch(e => {
+					setZkStatus(ZKStatus.PROOF_FAILED);
+					throw e;
+				});
 		}
 
 		setTurn(+turn);
@@ -136,8 +142,13 @@ async function gameGun(gameId: string, name: string, onLeave: VoidFunction, noir
 
 		if (+drawCount > 0) {
 			setZkStatus(ZKStatus.PROOF_VERIFY);
-			await drawNoir.verify(proof, BigInt(handHash), BigInt(encryptedCard), prime).catch(_e => setZkStatus(ZKStatus.PROOF_FAILED));
-			setZkStatus(ZKStatus.READY);
+			await drawNoir
+				.verify(proof, BigInt(handHash), BigInt(encryptedCard), prime)
+				.then(() => setZkStatus(ZKStatus.READY))
+				.catch(e => {
+					setZkStatus(ZKStatus.PROOF_FAILED);
+					throw e;
+				});
 		}
 
 		if (+drawCount === playersOrder().length * 4) {
@@ -160,8 +171,8 @@ async function gameGun(gameId: string, name: string, onLeave: VoidFunction, noir
 					setZkStatus(ZKStatus.PROOF_FAILED);
 					throw e;
 				});
-			setZkStatus(ZKStatus.READY);
 
+			setZkStatus(ZKStatus.READY);
 			handHistory = [...handHistory, card];
 			addToHand(card);
 			gameGun.get('draw').put(`${+drawCount + 1}|${encryptedCard}|${handHash}|${drawProof}`);
@@ -264,7 +275,6 @@ async function gameGun(gameId: string, name: string, onLeave: VoidFunction, noir
 				});
 
 			setZkStatus(ZKStatus.READY);
-
 			addToHand(card);
 			handHistory = [...handHistory, card];
 			gameGun.get('turn').put(`${nextTurn}|${encryptedCard}|${handHash}|${drawProof}`);
@@ -381,6 +391,7 @@ async function gameGun(gameId: string, name: string, onLeave: VoidFunction, noir
 			const playerOrder = [name, ...excluded].join();
 
 			gameGun.get('init').put({ prime: randomNBitPrime(8).toString(16), playerOrder }, async _ => {
+				gameGun.get('gameState').put(GameState.DEALING);
 				await shuffle();
 				gameGun.get('draw').put('0');
 				await draw4Defer;
