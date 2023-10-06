@@ -25,16 +25,20 @@ export async function pickNoirInit() {
 			const initialWitness = getInitialWitness(circuit.abi.param_witnesses, input);
 			const witness = await noir.generateWitness(initialWitness);
 			const proof = await noir.generateProof(witness);
-			return compressSync(proof).join(',');
+
+			return compressSync(proof).join();
 		},
 		verify(proofStr: string, _handHash: bigint) {
 			const proof = decompressSync(Uint8Array.from(proofStr.split(',').map(Number)));
 			const { handHash } = noir.extractProofPublicParams(proof);
+
 			if (handHash[0] !== _handHash) {
 				throw new Error('handHash does not match');
 			}
-			
+
 			return noir.verifyProof(proof);
 		},
 	};
 }
+
+export type PickNoir = Awaited<ReturnType<typeof pickNoirInit>>;

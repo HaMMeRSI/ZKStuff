@@ -24,7 +24,7 @@ export async function wonNoirInit() {
 			const initialWitness = getInitialWitness(circuit.abi.param_witnesses, input);
 			const witness = await noir.generateWitness(initialWitness);
 			const proof = await noir.generateProof(witness);
-			return compressSync(proof).join(',');
+			return compressSync(proof).join();
 		},
 		verify(proofStr: string, _handHash: bigint) {
 			const proof = decompressSync(Uint8Array.from(proofStr.split(',').map(Number)));
@@ -37,3 +37,5 @@ export async function wonNoirInit() {
 		},
 	};
 }
+
+export type WonNoir = Awaited<ReturnType<typeof wonNoirInit>>;

@@ -3,6 +3,7 @@ import { JSX, Show, createEffect, createSignal } from 'solid-js';
 import { Players } from './Players';
 import { Deck } from './Deck';
 import { CARDS } from '@/utils/cards';
+import { INoirCircuits } from '@/utils/types';
 
 const contolsContainer: JSX.CSSProperties = {
 	display: 'flex',
@@ -16,6 +17,7 @@ interface IProps {
 	player: string;
 	room: IGameGun;
 	leaveRoom: () => void;
+	noirCircuits?: INoirCircuits;
 }
 
 export function Game(props: IProps) {
@@ -27,6 +29,10 @@ export function Game(props: IProps) {
 	const zkStatus = props.room.zkStatus;
 	const players = props.room.playersOrder;
 	const winner = props.room.winner;
+
+	createEffect(() => {
+		console.log(zkStatus());
+	});
 
 	const [requestedCard, setRequestedCard] = createSignal(-1);
 	const [requestedFrom, setRequestedFrom] = createSignal<string>('');

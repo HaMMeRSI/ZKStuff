@@ -791,6 +791,31 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
+"@kevaundray/acvm_js@0.27.4-kw-play-around-2d3e9302e":
+  version "0.27.4-kw-play-around-2d3e9302e"
+  resolved "https://registry.yarnpkg.com/@kevaundray/acvm_js/-/acvm_js-0.27.4-kw-play-around-2d3e9302e.tgz#dc3386224020eb55683277fd0e9ebf2ef7388a19"
+  integrity sha512-9Lh3Ugu6xJzCAdjjHB1NXrDFaLrGTbNwwcPGoPBRelmfoaVvewv+B5zZ0io8ghNb46h1Ur9tJZDzDY2RPrzlCQ==
+
+"@kevaundray/noir_js@^0.15.0-kw-play-around-2d3e9302e":
+  version "0.15.0-kw-play-around-2d3e9302e"
+  resolved "https://registry.yarnpkg.com/@kevaundray/noir_js/-/noir_js-0.15.0-kw-play-around-2d3e9302e.tgz#a916b2889b45008e2279c4366963689e9a50485f"
+  integrity sha512-GpVEWn1WJG+kOgLCLyf2yq0ITo49I/zyFK1q2KczbVhIvGN5xooCfRTYDKserhpNBqoTS4UupDiORSmwViFDLw==
+  dependencies:
+    "@kevaundray/acvm_js" "0.27.4-kw-play-around-2d3e9302e"
+    "@kevaundray/noirc_abi" "0.15.0-kw-play-around-2d3e9302e"
+    "@kevaundray/types" "0.14.1-kw-play-around-2d3e9302e"
+    fflate "^0.8.0"
+
+"@kevaundray/noirc_abi@0.15.0-kw-play-around-2d3e9302e":
+  version "0.15.0-kw-play-around-2d3e9302e"
+  resolved "https://registry.yarnpkg.com/@kevaundray/noirc_abi/-/noirc_abi-0.15.0-kw-play-around-2d3e9302e.tgz#63e4b9897f897c6ce9dbbfbf7c27ff99b5c45793"
+  integrity sha512-+GgDnR8EbJb45Pi0Tz15mWpZui+cWLrglymI1u6Uszr9CDP7TWLfl4ec+6C34DQdHKZ+HLVbzlTEnd9ZtBNOTQ==
+
+"@kevaundray/types@0.14.1-kw-play-around-2d3e9302e":
+  version "0.14.1-kw-play-around-2d3e9302e"
+  resolved "https://registry.yarnpkg.com/@kevaundray/types/-/types-0.14.1-kw-play-around-2d3e9302e.tgz#db1b1902983fed4d97f340356d3f4565adc0b45a"
+  integrity sha512-XpVAi8bW69PcjxGFeAMibsm5HCePuG4BY0/LyyCEQ15Rhbd/wnVDYuaJAqQkMCLBGuAuiedzMQVcQGraBXS8iQ==
+
 "@noir-lang/acvm_js@0.26.1":
   version "0.26.1"
   resolved "https://registry.yarnpkg.com/@noir-lang/acvm_js/-/acvm_js-0.26.1.tgz#5dc5d4f54a1663ff0096ab3e7633c126418bd0f0"
@@ -1101,7 +1126,7 @@ ethers@5.7.2:
     "@ethersproject/web" "5.7.1"
     "@ethersproject/wordlists" "5.7.0"
 
-fflate@^0.8.1:
+fflate@^0.8.0, fflate@^0.8.1:
   version "0.8.1"
   resolved "https://registry.yarnpkg.com/fflate/-/fflate-0.8.1.tgz#1ed92270674d2ad3c73f077cd0acf26486dae6c9"
   integrity sha512-/exOvEuc+/iaUm105QIiOt4LpBdMTWsXxqR0HDF35vx3fmaKzw7354gTilCh5rkzEt8WYyG//ku3h3nRmd7CHQ==
@@ -1286,7 +1311,7 @@ seroval@^0.5.0:
 
 "shamir3pass@https://github.com/HaMMeRSI/Shamir3Pass":
   version "1.0.0"
-  resolved "https://github.com/HaMMeRSI/Shamir3Pass#c1e174d0593ab64e088f29a8ebaf4e32b6d1d026"
+  resolved "https://github.com/HaMMeRSI/Shamir3Pass#01e8e6c5f89440e34cea00338255963d27124850"
   dependencies:
     bigint-crypto-utils "^3.3.0"
 

@@ -1,0 +1,9 @@
+[package]
+name = "draw_zkproof"
+type = "bin"
+authors = ["Sagi Hammer"]
+compiler_version = "0.10.3"
+
+[dependencies]
+modpow = { path = "../modpow" }
+

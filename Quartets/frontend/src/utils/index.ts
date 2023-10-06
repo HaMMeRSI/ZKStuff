@@ -21,10 +21,6 @@ export const hexToString = (hex: string) => {
 	return str;
 };
 
-export function toShamirMessage(message: string) {
-	return BigInt('0x' + toHex(message).join(''));
-}
-
 export function RSA() {
 	function importKey(key: JsonWebKey, isPrivate: boolean) {
 		return window.crypto.subtle.importKey('jwk', key, { name: 'RSA-OAEP', hash: { name: 'SHA-256' } }, true, isPrivate ? ['decrypt'] : ['encrypt']);
@@ -90,10 +86,11 @@ export function padArray<T>(arr: T[], number: number, value: T) {
 		return arr;
 	}
 
-	const values = new Array(number - arr.length).fill(value);
-	arr.push.apply(arr, values);
+	const copy = [...arr];
+	const values = new Array(number - copy.length).fill(value);
+	copy.push.apply(copy, values);
 
-	return arr;
+	return copy;
 }
 
 export function toHex64_0(x: number | bigint) {
@@ -112,9 +109,17 @@ export function getInitialWitness<G extends string>(paramWitnesses: Record<G, nu
 		});
 	});
 
-	return new Map<number, string>(entries);
+	return new Map(entries);
 }
 
 export function bytesToNumber(byteArray: Uint8Array) {
 	return byteArray.reduce((a, b) => a * 256n + BigInt(b), 0n);
+}
+
+export function bitsToNumber(bits: boolean[]) {
+	let decimal = 0;
+	for (let i = 0; i < bits.length; i++) {
+		decimal = decimal * 2 + +bits[i];
+	}
+	return decimal;
 }

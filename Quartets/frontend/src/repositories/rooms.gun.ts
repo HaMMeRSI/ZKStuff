@@ -1,42 +1,44 @@
 import { gun } from '@/gun';
 import { nanoid } from 'nanoid';
-import roomGun, { IGameGun } from './game.gun';
+import gameGun, { GameState, IGameGun } from './game.gun';
 import { APP, ROOMS } from './tables.index';
 import { Accessor, createSignal } from 'solid-js';
+import { INoirCircuits } from '@/utils/types';
 
 export interface IRoomsGun {
 	roomIds: Accessor<Set<string>>;
 	activeRoom: Accessor<IGameGun | undefined>;
-	join(name: string, roomId?: string): Promise<VoidFunction>;
+	join(name: string, noirCircuits: Accessor<INoirCircuits>, roomId?: string): Promise<VoidFunction>;
 }
 
 function roomsGun(): IRoomsGun {
 	const roomsGun = gun.get(APP).get(ROOMS);
-	const [roomIds, setRoomIds] = createSignal<Set<string>>(new Set());
-	const [activeRoom, setActiveRoom] = createSignal<IGameGun>();
+	const [gameIds, setGameIds] = createSignal<Set<string>>(new Set());
+	const [activeGame, setActiveGame] = createSignal<IGameGun>();
 
-	roomsGun.map().on((data: Record<string, boolean>, key: any) => {
-		const set = new Set([...roomIds().values()]);
-		data.players ? set.add(key) : set.delete(key);
-		setRoomIds(set);
+	roomsGun.map().on((data: Record<string, GameState>, key: any) => {
+		const set = new Set([...gameIds().values()]);
+
+		const included = [GameState.WON, null].includes(data.gameState);
+		included ? set.delete(key) : set.add(key);
+
+		setGameIds(set);
 	});
 
 	return {
-		roomIds,
-		activeRoom,
-		async join(name: string, roomId?: string) {
-			if (activeRoom()) {
+		roomIds: gameIds,
+		activeRoom: activeGame,
+		async join(name: string, noirCircuits: Accessor<INoirCircuits>, gameId?: string) {
+			if (activeGame()) {
 				throw new Error("Can't create room while already in a room");
-			} else if (!roomId) {
-				roomId = nanoid();
+			} else if (!gameId) {
+				gameId = nanoid();
 			}
 
-			const room = await roomGun(roomId, name, () => setActiveRoom());
-			setActiveRoom(room);
+			const newGame = await gameGun(gameId, name, () => setActiveGame(), noirCircuits);
+			setActiveGame(newGame);
 
-			return () => {
-				room.leave();
-			};
+			return newGame.leave;
 		},
 	};
 }

@@ -1,0 +1,4 @@
+base = "123"
+expected = "9"
+exponent = "234"
+modulo = "144"

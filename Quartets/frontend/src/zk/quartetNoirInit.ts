@@ -25,7 +25,7 @@ export async function quartetNoirInit() {
 			const initialWitness = getInitialWitness(circuit.abi.param_witnesses, input);
 			const witness = await noir.generateWitness(initialWitness);
 			const proof = await noir.generateProof(witness);
-			return compressSync(proof).join(',');
+			return compressSync(proof).join();
 		},
 		verify(proofStr: string) {
 			const proof = decompressSync(Uint8Array.from(proofStr.split(',').map(Number)));
@@ -33,3 +33,5 @@ export async function quartetNoirInit() {
 		},
 	};
 }
+
+export type QuartetNoir = Awaited<ReturnType<typeof quartetNoirInit>>;

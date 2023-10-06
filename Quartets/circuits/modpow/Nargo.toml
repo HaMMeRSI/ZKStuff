@@ -1,0 +1,8 @@
+[package]
+name = "light_modpow"
+type = "lib"
+authors = ["Sagi Hammer"]
+compiler_version = "0.10.3"
+
+[dependencies]
+
